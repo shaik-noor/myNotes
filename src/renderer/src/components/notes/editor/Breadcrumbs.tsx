@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Home } from 'lucide-react'
 import type React from 'react'
 import { NoteGlyph } from '../noteIcon'
 
@@ -7,21 +7,36 @@ interface BreadcrumbsProps {
   currentTitle: string
   currentIcon?: string | null
   onNavigate: (id: string) => void
+  onNavigateHome?: () => void
 }
 
 export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
   ancestors,
   currentTitle,
   currentIcon,
-  onNavigate
+  onNavigate,
+  onNavigateHome
 }) => {
-  if (ancestors.length === 0) return null
-
   return (
     <nav
       aria-label="Page location"
       className="mb-2 flex items-center gap-0.5 overflow-x-auto text-xs text-muted-foreground select-none"
     >
+      {onNavigateHome && (
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            type="button"
+            onClick={onNavigateHome}
+            title="Workspace Home Dashboard"
+            className="flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted/60 hover:text-foreground"
+          >
+            <Home className="size-3.5 text-notes" />
+            <span className="font-medium">Home</span>
+          </button>
+          <ChevronRight className="size-3 shrink-0 text-muted-foreground/40" />
+        </div>
+      )}
+
       {ancestors.map((ancestor) => (
         <div key={ancestor.id} className="flex shrink-0 items-center gap-0.5">
           <button
@@ -36,6 +51,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
           <ChevronRight className="size-3 shrink-0 text-muted-foreground/40" />
         </div>
       ))}
+
       <span
         aria-current="page"
         title={currentTitle || 'Untitled'}
@@ -47,4 +63,3 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
     </nav>
   )
 }
-

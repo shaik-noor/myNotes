@@ -1,9 +1,9 @@
-import { Button } from './ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
+import type React from 'react'
 import {
   ArrowLeft,
   ArrowRight,
   Command,
+  Home,
   Moon,
   NotebookPen,
   PanelLeftClose,
@@ -11,9 +11,12 @@ import {
   Settings,
   Sun
 } from 'lucide-react'
-import type React from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useNotesStore } from '../store/useNotesStore'
+import { Button } from './ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
+import { cn } from './ui/utils'
+import { NoteGlyph } from './notes/noteIcon'
 
 interface TitleBarProps {
   sidebarOpen: boolean
@@ -22,6 +25,8 @@ interface TitleBarProps {
   onOpenShortcuts: () => void
 }
 
+const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
+
 export const TitleBar: React.FC<TitleBarProps> = ({
   sidebarOpen,
   onToggleSidebar,
@@ -29,6 +34,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onOpenShortcuts
 }) => {
   const { theme, toggleTheme } = useTheme()
+  const notes = useNotesStore((s) => s.notes)
+  const selectedNoteId = useNotesStore((s) => s.selectedNoteId)
+  const setSelectedNoteId = useNotesStore((s) => s.setSelectedNoteId)
   const canGoBack = useNotesStore((s) => s.navigationIndex > 0)
   const canGoForward = useNotesStore(
     (s) => s.navigationIndex < s.navigationHistory.length - 1
@@ -36,20 +44,27 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   const goBack = useNotesStore((s) => s.goBack)
   const goForward = useNotesStore((s) => s.goForward)
 
+  const activeNote = notes.find((n) => n.id === selectedNoteId) || null
+  const isBook = activeNote ? notes.some((n) => n.parentId === activeNote.id) : false
+
   return (
     <div
       data-slot="titlebar"
-      className="drag-region flex items-center justify-between w-full h-10 px-3 pl-20 select-none shrink-0 z-50 bg-background/90 border-b border-border/40 backdrop-blur-xl text-foreground"
+      className={cn(
+        'drag-region flex items-center justify-between w-full h-10 select-none shrink-0 z-50 bg-background/85 border-b border-border/40 backdrop-blur-xl text-foreground',
+        isMac ? 'pl-[92px] pr-3.5' : 'px-3.5'
+      )}
     >
-      {/* Left controls */}
+      {/* Left Navigation Cluster */}
       <div className="no-drag flex items-center gap-1.5">
+        {/* Sidebar Toggle */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
               onClick={onToggleSidebar}
-              className="cursor-pointer text-muted-foreground hover:text-foreground"
+              className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer"
               aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
               {sidebarOpen ? (
@@ -64,83 +79,120 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           </TooltipContent>
         </Tooltip>
 
-        <div className="flex items-center gap-0.5">
+        {/* Back / Forward segmented history group */}
+        <div className="flex items-center rounded-lg border border-border/50 bg-muted/30 p-0.5">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
+              <button
+                type="button"
                 onClick={() => goBack()}
                 disabled={!canGoBack}
-                className="cursor-pointer text-muted-foreground hover:text-foreground disabled:opacity-30"
+                className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-background/80 disabled:opacity-25 transition-all cursor-pointer disabled:cursor-not-allowed"
                 aria-label="Back"
               >
-                <ArrowLeft className="size-4" />
-              </Button>
+                <ArrowLeft className="size-3.5" />
+              </button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Back</TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
+              <button
+                type="button"
                 onClick={() => goForward()}
                 disabled={!canGoForward}
-                className="cursor-pointer text-muted-foreground hover:text-foreground disabled:opacity-30"
+                className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-background/80 disabled:opacity-25 transition-all cursor-pointer disabled:cursor-not-allowed"
                 aria-label="Forward"
               >
-                <ArrowRight className="size-4" />
-              </Button>
+                <ArrowRight className="size-3.5" />
+              </button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Forward</TooltipContent>
           </Tooltip>
         </div>
 
-        <div className="h-3.5 w-px bg-border/40 mx-1 shrink-0" />
+        {/* Home Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={selectedNoteId === null ? 'secondary' : 'ghost'}
+              size="icon-xs"
+              onClick={() => setSelectedNoteId(null)}
+              className={cn(
+                'size-7 rounded-lg cursor-pointer transition-colors',
+                selectedNoteId === null
+                  ? 'text-notes bg-notes/15 hover:bg-notes/25 shadow-2xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+              )}
+              aria-label="Home Dashboard"
+            >
+              <Home className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Home Dashboard (⌘H)</TooltipContent>
+        </Tooltip>
 
-        <div className="flex items-center gap-1.5 px-1 font-semibold text-xs text-foreground tracking-tight select-none">
-          <span className="flex size-5 items-center justify-center rounded-md bg-notes/10 text-notes">
-            <NotebookPen className="size-3" />
-          </span>
-          <span>myNotes</span>
-        </div>
+        <div className="h-3.5 w-px bg-border/60 mx-1 shrink-0" />
+
+        {/* Brand identity */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setSelectedNoteId(null)}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold text-foreground/90 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer select-none"
+            >
+              <span className="flex size-5 items-center justify-center rounded-md bg-notes/10 text-notes">
+                <NotebookPen className="size-3" />
+              </span>
+              <span className="tracking-tight font-bold">myNotes</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Workspace Home</TooltipContent>
+        </Tooltip>
       </div>
 
-      {/* Middle draggable area */}
-      <div className="flex-1 h-full drag-region" />
+      {/* Middle Area: Clean Draggable space with subtle centered document indicator */}
+      <div className="flex-1 h-full drag-region flex items-center justify-center px-4">
+        {activeNote ? (
+          <div className="no-drag flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-border/40 bg-card/40 text-2xs text-muted-foreground max-w-sm truncate shadow-3xs backdrop-blur-md">
+            <NoteGlyph icon={activeNote.icon} isBook={isBook} className="size-3 shrink-0" />
+            <span className="truncate font-medium text-foreground/80">{activeNote.title || 'Untitled'}</span>
+          </div>
+        ) : null}
+      </div>
 
-      {/* Right controls */}
-      <div className="no-drag flex items-center gap-1">
+      {/* Right Controls */}
+      <div className="no-drag flex items-center gap-1.5">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
               onClick={onOpenShortcuts}
-              className="cursor-pointer text-muted-foreground hover:text-foreground"
+              className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer"
               aria-label="Keyboard Shortcuts"
             >
               <Command className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Keyboard Shortcuts</TooltipContent>
+          <TooltipContent side="bottom">Keyboard Shortcuts (⌘/)</TooltipContent>
         </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
               onClick={toggleTheme}
-              className="cursor-pointer text-muted-foreground hover:text-foreground"
+              className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer"
               aria-label={theme === 'dark' ? 'Switch to Light mode' : 'Switch to Dark mode'}
             >
               {theme === 'dark' ? (
-                <Sun className="size-4 text-amber-500" />
+                <Sun className="size-3.5 text-amber-500" />
               ) : (
-                <Moon className="size-4 text-blue-500" />
+                <Moon className="size-3.5 text-blue-500" />
               )}
             </Button>
           </TooltipTrigger>
@@ -153,15 +205,15 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
               onClick={onOpenSettings}
-              className="cursor-pointer text-muted-foreground hover:text-foreground"
+              className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer"
               aria-label="Settings"
             >
-              <Settings className="size-4" />
+              <Settings className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Settings</TooltipContent>
+          <TooltipContent side="bottom">Settings (⌘,)</TooltipContent>
         </Tooltip>
       </div>
     </div>

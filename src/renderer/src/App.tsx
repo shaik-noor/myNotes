@@ -19,6 +19,8 @@ export const App: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const loadNotes = useNotesStore((s) => s.loadNotes)
+  const setSelectedNoteId = useNotesStore((s) => s.setSelectedNoteId)
+  const createNote = useNotesStore((s) => s.createNote)
   const { fontClass } = useTheme()
 
   const { width: sidebarWidth, isDragging, onHandleMouseDown } = useResizablePanel({
@@ -32,6 +34,41 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadNotes()
   }, [loadNotes])
+
+  // Global desktop keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      const isMod = e.metaKey || e.ctrlKey
+      if (!isMod) return
+
+      const key = e.key.toLowerCase()
+      if (key === 'h' && !e.shiftKey) {
+        e.preventDefault()
+        setSelectedNoteId(null)
+      } else if (key === 'n') {
+        e.preventDefault()
+        if (e.shiftKey) {
+          void createNote('Untitled Book').then((id) => {
+            if (id) void createNote('Untitled Page', id)
+          })
+        } else {
+          void createNote('Untitled Page')
+        }
+      } else if (key === ',') {
+        e.preventDefault()
+        setSettingsOpen(true)
+      } else if (key === '/' || key === '?') {
+        e.preventDefault()
+        setShortcutsOpen((v) => !v)
+      } else if (key === '\\') {
+        e.preventDefault()
+        setSidebarOpen((v) => !v)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setSelectedNoteId, createNote])
 
   return (
     <TooltipProvider delayDuration={200}>

@@ -23,14 +23,14 @@ import {
   Download,
   FileText,
   Hash,
-  Library,
-  Loader2,
+  Home,
   MoreVertical,
   NotebookPen,
   Pin,
   PinOff,
   Plus,
   Search,
+  Sparkles,
   Trash2,
   X
 } from 'lucide-react'
@@ -128,7 +128,7 @@ export function NotesSidebarPanel(): React.JSX.Element {
   const expandedNoteIds = useNotesStore((s) => s.expandedNoteIds)
   const toggleNoteExpanded = useNotesStore((s) => s.toggleNoteExpanded)
 
-  const { newNote, newBook, importing, handleImport } = useNoteCreation()
+  const { newNote, newBook, handleImport } = useNoteCreation()
 
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [checkedIds, setCheckedIds] = useState<string[]>([])
@@ -249,39 +249,34 @@ export function NotesSidebarPanel(): React.JSX.Element {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 p-2 select-none">
-      <div className="rounded-lg border border-border/50 bg-card/40 p-2.5 transition-colors hover:border-border/80">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-notes/25 bg-notes/10 text-notes">
-            <Library className="size-4" />
+    <div className="flex h-full min-h-0 flex-col gap-2.5 p-2 select-none">
+      {/* Top Workspace Navigation: Home */}
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          onClick={() => setSelectedNoteId(null)}
+          className={cn(
+            'flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all',
+            selectedNoteId === null
+              ? 'bg-notes/15 text-notes font-semibold shadow-2xs border border-notes/30'
+              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+          )}
+        >
+          <span
+            className={cn(
+              'flex size-6 items-center justify-center rounded-md transition-colors',
+              selectedNoteId === null
+                ? 'bg-notes text-notes-foreground shadow-2xs'
+                : 'bg-muted text-muted-foreground'
+            )}
+          >
+            <Home className="size-3.5" />
           </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-foreground">Notes library</p>
-            <p className="truncate text-2xs text-muted-foreground tabular-nums">
-              {notes.length} page{notes.length === 1 ? '' : 's'}
-              {booksCount > 0 && ` · ${booksCount} book${booksCount === 1 ? '' : 's'}`}
-            </p>
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => void handleImport()}
-                disabled={importing}
-                aria-label="Import notes"
-                className="size-7 shrink-0 text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                {importing ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Download className="size-3.5" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">Import OneNote, Markdown, HTML or TXT</TooltipContent>
-          </Tooltip>
-        </div>
+          <span className="flex-1 text-left">Home Dashboard</span>
+          <span className="rounded bg-muted/60 px-1.5 py-0.5 text-2xs text-muted-foreground tabular-nums">
+            {notes.length}
+          </span>
+        </button>
       </div>
 
       <div className="flex shrink-0 items-stretch overflow-hidden rounded-lg shadow-xs">
@@ -316,6 +311,13 @@ export function NotesSidebarPanel(): React.JSX.Element {
               title="New book"
               hint="A notebook that holds sub-pages"
               onSelect={() => void newBook()}
+            />
+            <CreateMenuItem
+              icon={Sparkles}
+              tone="text-amber-500"
+              title="From template…"
+              hint="Meeting, Project, Journal & more"
+              onSelect={() => setSelectedNoteId(null)}
             />
             <DropdownMenuSeparator />
             <CreateMenuItem

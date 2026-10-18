@@ -17,6 +17,7 @@ import {
   Download,
   FileText,
   Focus,
+  Home,
   ListTree,
   MoreHorizontal,
   Pin,
@@ -46,6 +47,7 @@ interface DocumentHeaderProps {
   fullWidth: boolean
   /** The editor instance — powers the always-visible "Search this page" box. */
   editor: Editor | null
+  onNavigateHome?: () => void
   onToggleFocus: () => void
   onToggleOutline: () => void
   onToggleFullWidth: () => void
@@ -107,6 +109,7 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
   pinned,
   fullWidth,
   editor,
+  onNavigateHome,
   onToggleFocus,
   onToggleOutline,
   onToggleFullWidth,
@@ -127,6 +130,21 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
     >
       {/* Kind + title + save state */}
       <div className="flex min-w-0 items-center gap-2 text-xs">
+        {onNavigateHome && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onNavigateHome}
+                className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+                aria-label="Home Dashboard"
+              >
+                <Home className="size-3.5 text-notes" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Home Dashboard (⌘H)</TooltipContent>
+          </Tooltip>
+        )}
         <span
           className={cn(
             'inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-2xs font-semibold',

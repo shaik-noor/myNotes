@@ -114,7 +114,12 @@ interface NotesState {
   setNoteExpanded: (id: string, expanded: boolean) => void
   expandAncestors: (id: string) => void
 
-  createNote: (initialTitle?: string, initialParentId?: string | null) => Promise<string>
+  createNote: (
+    initialTitle?: string,
+    initialParentId?: string | null,
+    initialContent?: string,
+    options?: { icon?: string; tags?: string[] }
+  ) => Promise<string>
   createChildPage: (parentId: string, initialTitle?: string) => Promise<string>
   createLinkedChildPage: (title: string, parentId: string) => Promise<string>
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>
@@ -153,9 +158,12 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         const list = res.data
         set({ notes: list, notesLoaded: true })
 
-        // Select first note if nothing selected
-        if (list.length > 0 && !get().selectedNoteId) {
-          get().setSelectedNoteId(list[0].id)
+        // Check if there is a saved note preference or resume state
+        const savedNoteId = localStorage.getItem('mynotes:active-note-id')
+        if (savedNoteId && list.some((n) => n.id === savedNoteId)) {
+          get().setSelectedNoteId(savedNoteId)
+        } else if (list.length === 0) {
+          get().setSelectedNoteId(null)
         }
       } else {
         set({ notesLoaded: true })
@@ -170,6 +178,13 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     set({ selectedNoteId: id })
     if (id) {
       get().expandAncestors(id)
+      try {
+        localStorage.setItem('mynotes:active-note-id', id)
+      } catch {}
+    } else {
+      try {
+        localStorage.removeItem('mynotes:active-note-id')
+      } catch {}
     }
 
     // Push navigation history
@@ -207,16 +222,23 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     set({ expandedNoteIds: next })
   },
 
-  createNote: async (initialTitle = 'Untitled', initialParentId = null) => {
+  createNote: async (
+    initialTitle = 'Untitled',
+    initialParentId = null,
+    initialContent = '',
+    options?: { icon?: string; tags?: string[] }
+  ) => {
     const now = new Date().toISOString()
     const id = Math.random().toString(36).slice(2, 10)
     const newNote: Note = {
       id,
       title: initialTitle,
-      content: '',
+      content: initialContent,
       createdAt: now,
       updatedAt: now,
-      parentId: initialParentId
+      parentId: initialParentId,
+      icon: options?.icon,
+      tags: options?.tags
     }
 
     const updated = [newNote, ...get().notes]

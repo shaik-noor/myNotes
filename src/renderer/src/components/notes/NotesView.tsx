@@ -1,13 +1,11 @@
 import { DEFAULT_CHAT_MODEL, type Note } from '../../types/notes'
-import { BrandWatermark } from '../ui/BrandWatermark'
-import { Button } from '../ui/button'
 import { confirmDialog } from '../ui/confirm'
 import { duration, ease, prefersReducedMotion } from '../ui/motion'
 import { toast } from '../ui/toast'
 import { cn } from '../ui/utils'
 import { type Editor, useEditorState } from '@tiptap/react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpen, Briefcase, FileUp, NotebookPen, Plus } from 'lucide-react'
+import { Briefcase } from 'lucide-react'
 import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getAncestors, useNotesStore } from '../../store/useNotesStore'
@@ -25,9 +23,9 @@ import { NoteTagsBar } from './editor/NoteTagsBar'
 import { OPEN_FIND_REPLACE_EVENT } from './editor/searchHighlight'
 import { TitleInput } from './editor/TitleInput'
 import { NoteAttachmentsPanel } from './NoteAttachmentsPanel'
-import { NoteGlyph } from './noteIcon'
 import { NotePeekPanel } from './peek/NotePeekPanel'
-import { shortAge, useNoteCreation } from './sidebar/NotesSidebarPanel'
+import { useNoteCreation } from './sidebar/NotesSidebarPanel'
+import { HomePage } from './home/HomePage'
 
 function toMarkdownDocument(title: string, content: string): string {
   const startsWithH1 = /^\s*#\s/.test(content)
@@ -43,7 +41,7 @@ function readOutlineOpen(): boolean {
 interface NoteEditorCanvasProps {
   note: Note
   notes: Note[]
-  setSelectedNoteId: (id: string) => void
+  setSelectedNoteId: (id: string | null) => void
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>
   deleteNote: (id: string) => Promise<void>
   toggleNotePinned: (id: string) => Promise<void>
@@ -213,6 +211,7 @@ const NoteEditorCanvas: React.FC<NoteEditorCanvasProps> = ({
         pinned={!!note.pinned}
         fullWidth={!!note.fullWidth}
         editor={editor}
+        onNavigateHome={() => setSelectedNoteId(null)}
         onToggleFocus={() => setFocusMode((f) => !f)}
         onToggleOutline={() => setOutlineOpen((o) => !o)}
         onToggleFullWidth={() => void updateNote(note.id, { fullWidth: !note.fullWidth })}
@@ -246,6 +245,7 @@ const NoteEditorCanvas: React.FC<NoteEditorCanvasProps> = ({
                 currentTitle={title}
                 currentIcon={note.icon}
                 onNavigate={setSelectedNoteId}
+                onNavigateHome={() => setSelectedNoteId(null)}
               />
 
               <TitleInput value={title} onChange={handleTitleChange} />
@@ -351,8 +351,23 @@ export const NotesView: React.FC = () => {
     return () => window.removeEventListener(OPEN_PAGE_PEEK_EVENT, handler)
   }, [notes])
 
+  const createNote = useNotesStore((s) => s.createNote)
+  const { newBook, importing, handleImport } = useNoteCreation()
+
   if (!selectedNote) {
-    return <NotesEmptyState notes={notes} onOpen={setSelectedNoteId} />
+    return (
+      <HomePage
+        notes={notes}
+        onOpenNote={setSelectedNoteId}
+        onCreateNote={createNote}
+        onNewBook={newBook}
+        onImport={handleImport}
+        importing={importing}
+        onTogglePinned={toggleNotePinned}
+        onDuplicate={duplicateNote}
+        onDelete={deleteNote}
+      />
+    )
   }
 
   return (
@@ -400,109 +415,4 @@ export const NotesView: React.FC = () => {
   )
 }
 
-function NotesEmptyState({
-  notes,
-  onOpen
-}: {
-  notes: Note[]
-  onOpen: (id: string) => void
-}): React.JSX.Element {
-  const { newNote, newBook, importing, handleImport } = useNoteCreation()
-  const reduce = prefersReducedMotion()
-  const recent = useMemo(
-    () =>
-      [...notes]
-        .sort((a, b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt))
-        .slice(0, 4),
-    [notes]
-  )
-  const bookIds = useMemo(() => new Set(notes.map((n) => n.parentId).filter(Boolean)), [notes])
-  const empty = notes.length === 0
-
-  return (
-    <div className="relative flex flex-1 items-center justify-center overflow-y-auto bg-background p-8">
-      <BrandWatermark text="Notes" />
-      <motion.div
-        initial={{ opacity: 0, y: reduce ? 0 : 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{
-          duration: reduce ? 0 : duration.base,
-          ease: ease.out as [number, number, number, number]
-        }}
-        className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-border/70 bg-card/70 p-8 shadow-lg backdrop-blur-xl"
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-24 left-1/2 size-56 -translate-x-1/2 rounded-full bg-notes/20 blur-3xl"
-        />
-        <div className="relative flex flex-col items-center text-center">
-          <span className="mb-4 flex size-14 items-center justify-center rounded-2xl border border-notes/25 bg-notes/10 text-notes shadow-2xs">
-            <NotebookPen className="size-7" />
-          </span>
-          <h2 className="text-lg font-bold tracking-tight text-foreground">
-            {empty ? 'Start your notes library' : 'Pick up where you left off'}
-          </h2>
-          <p className="mt-1.5 max-w-xs text-xs leading-relaxed text-balance text-muted-foreground">
-            {empty
-              ? 'Capture notes, documentation and runbooks. Group related pages into books and link them with @mentions.'
-              : 'Choose a page from the sidebar or a recent one below — or start something new.'}
-          </p>
-
-          <Button
-            onClick={newNote}
-            className="mt-5 h-9 w-full cursor-pointer gap-1.5 rounded-lg bg-notes text-notes-foreground shadow-2xs hover:bg-notes/90"
-          >
-            <Plus className="size-4" />
-            New page
-          </Button>
-          <div className="mt-2 grid w-full grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              onClick={() => void newBook()}
-              className="h-8 cursor-pointer gap-1.5 rounded-lg border-border/60 text-xs shadow-2xs"
-            >
-              <BookOpen className="size-3.5 text-notes" />
-              New book
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => void handleImport()}
-              disabled={importing}
-              className="h-8 cursor-pointer gap-1.5 rounded-lg border-border/60 text-xs shadow-2xs"
-            >
-              <FileUp className="size-3.5 text-notes" />
-              {importing ? 'Importing…' : 'Import'}
-            </Button>
-          </div>
-        </div>
-
-        {recent.length > 0 && (
-          <div className="relative mt-6 border-t border-border/50 pt-4">
-            <p className="mb-2 text-2xs font-bold uppercase tracking-wider text-muted-foreground">
-              Recent
-            </p>
-            <div className="flex flex-col gap-0.5">
-              {recent.map((n) => (
-                <button
-                  key={n.id}
-                  type="button"
-                  onClick={() => onOpen(n.id)}
-                  className="group flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-notes/50 focus-visible:outline-none"
-                >
-                  <NoteGlyph icon={n.icon} isBook={bookIds.has(n.id)} />
-                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground/85 group-hover:text-foreground">
-                    {n.title || 'Untitled'}
-                  </span>
-                  <span className="shrink-0 text-2xs text-muted-foreground/70 tabular-nums">
-                    {shortAge(n.updatedAt || n.createdAt)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </motion.div>
-    </div>
-  )
-}
 

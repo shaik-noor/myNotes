@@ -14,11 +14,15 @@ interface KeyboardShortcutsDialogProps {
 
 const SHORTCUT_GROUPS = [
   {
-    category: 'General',
+    category: 'General & Navigation',
     items: [
+      { keys: ['Mod', 'H'], description: 'Go to Home Dashboard' },
+      { keys: ['Mod', 'N'], description: 'Create new page' },
+      { keys: ['Mod', 'Shift', 'N'], description: 'Create new book' },
       { keys: ['Mod', 'S'], description: 'Save current note' },
       { keys: ['Mod', 'F'], description: 'Find & Replace in note' },
-      { keys: ['Esc'], description: 'Close modals & find bar' }
+      { keys: ['Mod', ','], description: 'Open Settings' },
+      { keys: ['Esc'], description: 'Close modals & return' }
     ]
   },
   {
