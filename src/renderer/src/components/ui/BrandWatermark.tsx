@@ -12,7 +12,7 @@ export const BrandWatermark: React.FC<BrandWatermarkProps> = ({ text, className 
       className ?? ''
     }`}
   >
-    <span className="mb-[4vh] mr-[3vw] select-none whitespace-nowrap text-[clamp(2rem,5vw,4.5rem)] font-black uppercase leading-none tracking-tight text-foreground/[0.03]">
+    <span className="mb-[4vh] mr-[3vw] select-none whitespace-nowrap text-[clamp(2rem,5vw,4.5rem)] font-black uppercase leading-none tracking-tight text-foreground opacity-[0.035]">
       {text}
     </span>
   </div>

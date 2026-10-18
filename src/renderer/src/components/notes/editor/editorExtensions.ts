@@ -72,7 +72,7 @@ export function buildEditorExtensions(noteId: string): AnyExtension[] {
     Link.configure({
       openOnClick: false,
       defaultProtocol: 'https',
-      protocols: ['mynotes', 'mydesk-note', 'mydesk-attachment'],
+      protocols: ['mynotes', 'mydesk-note', 'mynotes-attachment', 'mydesk-attachment'],
       HTMLAttributes: {
         class: 'text-primary underline cursor-pointer hover:text-primary/80 transition-colors',
         rel: 'noopener noreferrer'

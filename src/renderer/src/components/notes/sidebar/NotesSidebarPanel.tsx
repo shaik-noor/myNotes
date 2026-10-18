@@ -221,7 +221,7 @@ export function NotesSidebarPanel(): React.JSX.Element {
       destructive: true
     })
     if (!ok) return
-    await deleteNotes(checkedIds)
+    await deleteNotes(checkedIds, true)
     exitSelect()
   }
 

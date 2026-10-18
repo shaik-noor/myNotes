@@ -119,7 +119,7 @@ interface NotesState {
   createLinkedChildPage: (title: string, parentId: string) => Promise<string>
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>
   deleteNote: (id: string) => Promise<void>
-  deleteNotes: (ids: string[]) => Promise<void>
+  deleteNotes: (ids: string[], skipConfirm?: boolean) => Promise<void>
   duplicateNote: (id: string) => Promise<string | null>
   toggleNotePinned: (id: string) => Promise<void>
   moveNote: (
@@ -148,8 +148,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   loadNotes: async () => {
     try {
-      const res = await window.api.notes.load()
-      if (res.success && Array.isArray(res.data)) {
+      const res = await window.api?.notes?.load?.()
+      if (res?.success && Array.isArray(res.data)) {
         const list = res.data
         set({ notes: list, notesLoaded: true })
 
@@ -225,7 +225,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       get().setNoteExpanded(initialParentId, true)
     }
 
-    await window.api.notes.save(updated)
+    await window.api?.notes?.save?.(updated)
     return id
   },
 
@@ -247,7 +247,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     updated[idx] = { ...updated[idx], ...updates, updatedAt: now }
 
     set({ notes: updated })
-    await window.api.notes.save(updated)
+    await window.api?.notes?.save?.(updated)
   },
 
   deleteNote: async (id) => {
@@ -268,18 +268,18 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
     const removeIds = new Set([id, ...descendants])
     const updated = notes.filter((n) => !removeIds.has(n.id))
-    set({ notes: updated })
-    await window.api.notes.save(updated)
-
+    let nextSelectedId = selectedNoteId
     if (selectedNoteId && removeIds.has(selectedNoteId)) {
-      const nextId = updated.length > 0 ? updated[0].id : null
-      get().setSelectedNoteId(nextId)
+      nextSelectedId = updated.length > 0 ? updated[0].id : null
     }
+
+    set({ notes: updated, selectedNoteId: nextSelectedId })
+    await window.api?.notes?.save?.(updated)
 
     toast.success('Note deleted')
   },
 
-  deleteNotes: async (ids) => {
+  deleteNotes: async (ids, skipConfirm = false) => {
     const { notes, selectedNoteId } = get()
     const allIds = new Set(ids)
     for (const id of ids) {
@@ -288,22 +288,24 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       }
     }
 
-    const ok = await confirmDialog({
-      title: `Delete ${allIds.size} note(s)?`,
-      description: 'The selected pages and their sub-pages will be permanently deleted.',
-      confirmText: 'Delete All',
-      destructive: true
-    })
-    if (!ok) return
+    if (!skipConfirm) {
+      const ok = await confirmDialog({
+        title: `Delete ${allIds.size} note(s)?`,
+        description: 'The selected pages and their sub-pages will be permanently deleted.',
+        confirmText: 'Delete All',
+        destructive: true
+      })
+      if (!ok) return
+    }
 
     const updated = notes.filter((n) => !allIds.has(n.id))
-    set({ notes: updated })
-    await window.api.notes.save(updated)
-
+    let nextSelectedId = selectedNoteId
     if (selectedNoteId && allIds.has(selectedNoteId)) {
-      const nextId = updated.length > 0 ? updated[0].id : null
-      get().setSelectedNoteId(nextId)
+      nextSelectedId = updated.length > 0 ? updated[0].id : null
     }
+
+    set({ notes: updated, selectedNoteId: nextSelectedId })
+    await window.api?.notes?.save?.(updated)
 
     toast.success(`Deleted ${allIds.size} note(s)`)
   },
@@ -327,7 +329,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const updated = [...notes.slice(0, idx + 1), copy, ...notes.slice(idx + 1)]
 
     set({ notes: updated, selectedNoteId: newId })
-    await window.api.notes.save(updated)
+    await window.api?.notes?.save?.(updated)
     toast.success('Note duplicated')
     return newId
   },
@@ -386,7 +388,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       get().setNoteExpanded(parentId, true)
     }
 
-    await window.api.notes.save(updated)
+    await window.api?.notes?.save?.(updated)
     return id
   },
 

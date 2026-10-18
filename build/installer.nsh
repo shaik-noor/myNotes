@@ -4,7 +4,7 @@
 ; mechanism: existing Desktop / Start Menu shortcuts are left alone, but a MISSING
 ; one is never recreated on an update (addDesktopLink/addStartMenuLink skip it when
 ; isUpdated). Users who lost their shortcuts around the 0.4.45 forced update were
-; left with MyDesk installed (still in Add/Remove Programs) but nothing to launch it
+; left with myNotes installed (still in Add/Remove Programs) but nothing to launch it
 ; from. customInstall runs after those macros — recreate any missing shortcut here
 ; so every install AND update self-heals.
 !macro customInstall

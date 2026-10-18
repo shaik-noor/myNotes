@@ -41,8 +41,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Hydrate settings
   useEffect(() => {
-    window.api?.app?.getSettings().then((res) => {
-      if (res.success && res.data) {
+    window.api?.app?.getSettings?.()?.then?.((res) => {
+      if (res?.success && res?.data) {
         setSettings(res.data)
       }
     })
@@ -68,7 +68,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setTheme = (theme: ThemeMode): void => {
     setSettings((s) => ({ ...s, theme }))
-    window.api?.app?.saveSettings({ theme })
+    window.api?.app?.saveSettings?.({ theme })
   }
 
   const toggleTheme = (): void => {
@@ -80,17 +80,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setPalette = (palette: Palette): void => {
     setSettings((s) => ({ ...s, palette }))
-    window.api?.app?.saveSettings({ palette })
+    window.api?.app?.saveSettings?.({ palette })
   }
 
   const setFontClass = (fontClass: EditorFont): void => {
     setSettings((s) => ({ ...s, fontClass }))
-    window.api?.app?.saveSettings({ fontClass })
+    window.api?.app?.saveSettings?.({ fontClass })
   }
 
   const setFullWidthDefault = (fullWidthDefault: boolean): void => {
     setSettings((s) => ({ ...s, fullWidthDefault }))
-    window.api?.app?.saveSettings({ fullWidthDefault })
+    window.api?.app?.saveSettings?.({ fullWidthDefault })
   }
 
   return (

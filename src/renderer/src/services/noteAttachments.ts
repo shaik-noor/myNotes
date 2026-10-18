@@ -1,10 +1,16 @@
 import type { NoteAttachment } from '../types/notes'
 
-export const NOTE_ATTACHMENT_SCHEME = 'mydesk-attachment:'
+export const NOTE_ATTACHMENT_SCHEME = 'mynotes-attachment:'
+export const LEGACY_NOTE_ATTACHMENT_SCHEME = 'mydesk-attachment:'
 
 export function attachmentIdFromUrl(url: string | null | undefined): string | null {
-  if (!url?.startsWith(NOTE_ATTACHMENT_SCHEME)) return null
-  return url.slice(NOTE_ATTACHMENT_SCHEME.length) || null
+  if (url?.startsWith(NOTE_ATTACHMENT_SCHEME)) {
+    return url.slice(NOTE_ATTACHMENT_SCHEME.length) || null
+  }
+  if (url?.startsWith(LEGACY_NOTE_ATTACHMENT_SCHEME)) {
+    return url.slice(LEGACY_NOTE_ATTACHMENT_SCHEME.length) || null
+  }
+  return null
 }
 
 export class NoteAttachmentsService {

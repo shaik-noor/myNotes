@@ -4,7 +4,7 @@ import type React from 'react'
 import { useEffect, useState } from 'react'
 import { Button } from './button'
 
-interface ConfirmDialogOptions {
+export interface ConfirmDialogOptions {
   title: string
   description?: string
   confirmText?: string
@@ -17,36 +17,79 @@ interface ConfirmState extends ConfirmDialogOptions {
   resolve: (value: boolean) => void
 }
 
-let activeConfirm: ((opts: ConfirmDialogOptions) => Promise<boolean>) | null = null
+type ConfirmListener = (state: ConfirmState | null) => void
 
-export function confirmDialog(options: ConfirmDialogOptions): Promise<boolean> {
-  if (!activeConfirm) return Promise.resolve(false)
-  return activeConfirm(options)
+class ConfirmManager {
+  private listener: ConfirmListener | null = null
+  private currentResolver: ((val: boolean) => void) | null = null
+
+  subscribe(listener: ConfirmListener): () => void {
+    this.listener = listener
+    return () => {
+      if (this.listener === listener) {
+        this.listener = null
+      }
+    }
+  }
+
+  ask(options: ConfirmDialogOptions): Promise<boolean> {
+    if (!this.listener) {
+      if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+        const ok = window.confirm(`${options.title}\n\n${options.description || ''}`)
+        return Promise.resolve(ok)
+      }
+      return Promise.resolve(true)
+    }
+
+    if (this.currentResolver) {
+      this.currentResolver(false)
+      this.currentResolver = null
+    }
+
+    return new Promise<boolean>((resolve) => {
+      this.currentResolver = resolve
+      this.listener?.({
+        ...options,
+        id: Math.random().toString(36).slice(2),
+        resolve: (val: boolean) => {
+          this.currentResolver = null
+          resolve(val)
+        }
+      })
+    })
+  }
+
+  close(result: boolean): void {
+    if (this.currentResolver) {
+      const resolver = this.currentResolver
+      this.currentResolver = null
+      this.listener?.(null)
+      // Resolve asynchronously so the dialog closes and DOM events finish
+      // cleanly before any caller state changes trigger React re-renders
+      setTimeout(() => {
+        resolver(result)
+      }, 0)
+    } else {
+      this.listener?.(null)
+    }
+  }
 }
 
-export const ConfirmProvider: React.FC = () => {
+export const confirmManager = new ConfirmManager()
+
+export function confirmDialog(options: ConfirmDialogOptions): Promise<boolean> {
+  return confirmManager.ask(options)
+}
+
+export function ConfirmDialog(): React.JSX.Element {
   const [dialogState, setDialogState] = useState<ConfirmState | null>(null)
 
   useEffect(() => {
-    activeConfirm = (opts: ConfirmDialogOptions) =>
-      new Promise<boolean>((resolve) => {
-        setDialogState({
-          ...opts,
-          id: Math.random().toString(36).slice(2),
-          resolve
-        })
-      })
-
-    return () => {
-      activeConfirm = null
-    }
+    return confirmManager.subscribe(setDialogState)
   }, [])
 
   const handleClose = (result: boolean): void => {
-    if (dialogState) {
-      dialogState.resolve(result)
-      setDialogState(null)
-    }
+    confirmManager.close(result)
   }
 
   return (
@@ -104,3 +147,7 @@ export const ConfirmProvider: React.FC = () => {
   )
 }
 
+// Export both ConfirmDialog and ConfirmProvider for complete backwards compatibility
+export function ConfirmProvider(): React.JSX.Element {
+  return <ConfirmDialog />
+}
