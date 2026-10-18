@@ -74,4 +74,3 @@ export const BacklinksPanel: React.FC<BacklinksPanelProps> = ({
     </NoteSection>
   )
 }
-

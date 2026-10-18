@@ -101,7 +101,11 @@ const ContextMenuLabel = React.forwardRef<
 >(({ className, inset, ...props }, ref) => (
   <ContextMenuPrimitive.Label
     ref={ref}
-    className={cn('px-2 py-1 text-2xs font-semibold text-muted-foreground', inset && 'pl-8', className)}
+    className={cn(
+      'px-2 py-1 text-2xs font-semibold text-muted-foreground',
+      inset && 'pl-8',
+      className
+    )}
     {...props}
   />
 ))
@@ -109,15 +113,15 @@ ContextMenuLabel.displayName = ContextMenuPrimitive.Label.displayName
 
 export {
   ContextMenu,
-  ContextMenuTrigger,
   ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuLabel,
   ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
   ContextMenuPortal,
+  ContextMenuRadioGroup,
+  ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
-  ContextMenuRadioGroup
+  ContextMenuTrigger
 }

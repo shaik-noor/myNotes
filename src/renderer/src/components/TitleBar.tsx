@@ -1,27 +1,32 @@
-import type React from 'react'
 import {
   ArrowLeft,
   ArrowRight,
+  Cloud,
   Command,
   Home,
   Moon,
   NotebookPen,
   PanelLeftClose,
   PanelLeftOpen,
+  RefreshCw,
   Settings,
   Sun
 } from 'lucide-react'
+import type React from 'react'
+import { useEffect, useState } from 'react'
+import type { CloudSyncConfig } from '../../../main/types'
 import { useTheme } from '../context/ThemeContext'
 import { useNotesStore } from '../store/useNotesStore'
+import { NoteGlyph } from './notes/noteIcon'
+import type { SettingsTab } from './SettingsDialog'
 import { Button } from './ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { cn } from './ui/utils'
-import { NoteGlyph } from './notes/noteIcon'
 
 interface TitleBarProps {
   sidebarOpen: boolean
   onToggleSidebar: () => void
-  onOpenSettings: () => void
+  onOpenSettings: (tab?: SettingsTab) => void
   onOpenShortcuts: () => void
 }
 
@@ -34,13 +39,32 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onOpenShortcuts
 }) => {
   const { theme, toggleTheme } = useTheme()
+  const [cloudConfig, setCloudConfig] = useState<CloudSyncConfig | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    const checkCloud = async (): Promise<void> => {
+      try {
+        const res = await window.api?.cloud?.getConfig?.()
+        if (res?.success && res.data && mounted) {
+          setCloudConfig(res.data)
+        }
+      } catch {}
+    }
+    checkCloud()
+    const unsub = window.api?.cloud?.onSyncStatusChange?.(() => {
+      checkCloud()
+    })
+    return () => {
+      mounted = false
+      unsub?.()
+    }
+  }, [])
   const notes = useNotesStore((s) => s.notes)
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId)
   const setSelectedNoteId = useNotesStore((s) => s.setSelectedNoteId)
   const canGoBack = useNotesStore((s) => s.navigationIndex > 0)
-  const canGoForward = useNotesStore(
-    (s) => s.navigationIndex < s.navigationHistory.length - 1
-  )
+  const canGoForward = useNotesStore((s) => s.navigationIndex < s.navigationHistory.length - 1)
   const goBack = useNotesStore((s) => s.goBack)
   const goForward = useNotesStore((s) => s.goForward)
 
@@ -158,7 +182,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         {activeNote ? (
           <div className="no-drag flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-border/40 bg-card/40 text-2xs text-muted-foreground max-w-sm truncate shadow-3xs backdrop-blur-md">
             <NoteGlyph icon={activeNote.icon} isBook={isBook} className="size-3 shrink-0" />
-            <span className="truncate font-medium text-foreground/80">{activeNote.title || 'Untitled'}</span>
+            <span className="truncate font-medium text-foreground/80">
+              {activeNote.title || 'Untitled'}
+            </span>
           </div>
         ) : null}
       </div>
@@ -201,12 +227,43 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           </TooltipContent>
         </Tooltip>
 
+        {/* Cloud Sync Button */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon-xs"
-              onClick={onOpenSettings}
+              onClick={() => onOpenSettings('cloud')}
+              className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer relative"
+              aria-label="Cloud Sync"
+            >
+              {cloudConfig?.isSyncing ? (
+                <RefreshCw className="size-3.5 text-blue-500 animate-spin" />
+              ) : cloudConfig?.isConnected ? (
+                <div className="relative flex items-center justify-center">
+                  <Cloud className="size-3.5 text-emerald-500" />
+                  <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-emerald-500 shadow-xs" />
+                </div>
+              ) : (
+                <Cloud className="size-3.5 opacity-60 hover:opacity-100" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {cloudConfig?.isSyncing
+              ? 'Syncing with Google Drive...'
+              : cloudConfig?.isConnected
+                ? 'Google Drive: Connected & Synced'
+                : 'Connect Google Drive Storage'}
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => onOpenSettings()}
               className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer"
               aria-label="Settings"
             >

@@ -1,10 +1,16 @@
 import { Check, ImageIcon, Link2, Smile, X } from 'lucide-react'
 import type React from 'react'
 import { useState } from 'react'
-import { Button } from '../../ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../ui/dialog'
-import { cn } from '../../ui/utils'
 import type { Note } from '../../../types/notes'
+import { Button } from '../../ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from '../../ui/dialog'
+import { cn } from '../../ui/utils'
 import { BANNER_IMAGES_BY_CATEGORY, resolveCoverImage } from './bannerImages'
 
 const COVER_GRADIENTS: { name: string; value: string }[] = [
@@ -18,9 +24,30 @@ const COVER_GRADIENTS: { name: string; value: string }[] = [
 ]
 
 const PRESET_EMOJIS = [
-  '📝', '💻', '🚀', '💡', '📅', '🎯', '🎨', '🧪',
-  '📁', '🔑', '📈', '💬', '⚠️', '✅', '❌', '📌',
-  '🔒', '🌍', '🧠', '🏢', '⚡', '🔍', '🛠️', '📊'
+  '📝',
+  '💻',
+  '🚀',
+  '💡',
+  '📅',
+  '🎯',
+  '🎨',
+  '🧪',
+  '📁',
+  '🔑',
+  '📈',
+  '💬',
+  '⚠️',
+  '✅',
+  '❌',
+  '📌',
+  '🔒',
+  '🌍',
+  '🧠',
+  '🏢',
+  '⚡',
+  '🔍',
+  '🛠️',
+  '📊'
 ]
 
 interface CoverAndIconProps {
@@ -162,11 +189,7 @@ export const CoverBanner: React.FC<CoverAndIconProps> = ({ note, onUpdate }) => 
       {isGradient ? (
         <div className={cn('size-full', note.coverImage)} />
       ) : (
-        <img
-          src={resolved}
-          alt="Cover banner"
-          className="size-full object-cover object-center"
-        />
+        <img src={resolved} alt="Cover banner" className="size-full object-cover object-center" />
       )}
 
       {/* Hover action overlay */}
@@ -292,4 +315,3 @@ export const CoverAndIcon: React.FC<CoverAndIconProps> = ({ note, onUpdate }) =>
     </div>
   )
 }
-

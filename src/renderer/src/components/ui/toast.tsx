@@ -26,7 +26,11 @@ class ToastStore {
     for (const l of this.listeners) l(this.toasts)
   }
 
-  add(type: 'success' | 'error' | 'info', message: string, options?: { description?: string }): void {
+  add(
+    type: 'success' | 'error' | 'info',
+    message: string,
+    options?: { description?: string }
+  ): void {
     const id = Math.random().toString(36).slice(2)
     const toast: ToastMessage = { id, type, message, description: options?.description }
     this.toasts = [...this.toasts, toast]
@@ -71,7 +75,9 @@ export const Toaster: React.FC = () => {
             className="pointer-events-auto flex items-start gap-3 rounded-xl border border-border/80 bg-popover/95 p-3.5 shadow-xl backdrop-blur-xl text-popover-foreground"
           >
             {t.type === 'success' && <CheckCircle className="size-4 shrink-0 text-notes mt-0.5" />}
-            {t.type === 'error' && <AlertCircle className="size-4 shrink-0 text-destructive mt-0.5" />}
+            {t.type === 'error' && (
+              <AlertCircle className="size-4 shrink-0 text-destructive mt-0.5" />
+            )}
             {t.type === 'info' && <Info className="size-4 shrink-0 text-notes mt-0.5" />}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold leading-tight">{t.message}</p>
@@ -94,4 +100,3 @@ export const Toaster: React.FC = () => {
     </div>
   )
 }
-

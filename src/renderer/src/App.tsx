@@ -1,29 +1,35 @@
 import type React from 'react'
 import { useEffect, useState } from 'react'
-import { TitleBar } from './components/TitleBar'
-import { NotesSidebarPanel } from './components/notes/sidebar/NotesSidebarPanel'
-import { NotesView } from './components/notes/NotesView'
-import { SettingsDialog } from './components/SettingsDialog'
 import { KeyboardShortcutsDialog } from './components/KeyboardShortcutsDialog'
-import { Toaster } from './components/ui/toast'
-import { useResizablePanel } from './components/ui/useResizablePanel'
-import { PanelResizeHandle } from './components/ui/PanelResizeHandle'
-import { useNotesStore } from './store/useNotesStore'
-import { useTheme } from './context/ThemeContext'
-import { TooltipProvider } from './components/ui/tooltip'
+import { NotesView } from './components/notes/NotesView'
+import { NotesSidebarPanel } from './components/notes/sidebar/NotesSidebarPanel'
+import type { SettingsTab } from './components/SettingsDialog'
+import { SettingsDialog } from './components/SettingsDialog'
+import { TitleBar } from './components/TitleBar'
 import { ConfirmDialog } from './components/ui/confirm'
+import { PanelResizeHandle } from './components/ui/PanelResizeHandle'
+import { Toaster } from './components/ui/toast'
+import { TooltipProvider } from './components/ui/tooltip'
+import { useResizablePanel } from './components/ui/useResizablePanel'
 import { cn } from './components/ui/utils'
+import { useTheme } from './context/ThemeContext'
+import { useNotesStore } from './store/useNotesStore'
 
 export const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('appearance')
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const loadNotes = useNotesStore((s) => s.loadNotes)
   const setSelectedNoteId = useNotesStore((s) => s.setSelectedNoteId)
   const createNote = useNotesStore((s) => s.createNote)
   const { fontClass } = useTheme()
 
-  const { width: sidebarWidth, isDragging, onHandleMouseDown } = useResizablePanel({
+  const {
+    width: sidebarWidth,
+    isDragging,
+    onHandleMouseDown
+  } = useResizablePanel({
     initial: 280,
     min: 220,
     max: 440,
@@ -33,6 +39,12 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadNotes()
+    const unsub = window.api.cloud?.onVaultUpdated?.(() => {
+      loadNotes()
+    })
+    return () => {
+      unsub?.()
+    }
   }, [loadNotes])
 
   // Global desktop keyboard shortcuts
@@ -72,12 +84,20 @@ export const App: React.FC = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className={cn('flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground select-none', fontClass)}>
+      <div
+        className={cn(
+          'flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground select-none',
+          fontClass
+        )}
+      >
         {/* macOS hiddenInset title bar */}
         <TitleBar
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenSettings={(tab) => {
+            if (tab) setSettingsTab(tab)
+            setSettingsOpen(true)
+          }}
           onOpenShortcuts={() => setShortcutsOpen(true)}
         />
 
@@ -103,7 +123,11 @@ export const App: React.FC = () => {
         </div>
 
         {/* Modal Dialogs */}
-        <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+        <SettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          initialTab={settingsTab}
+        />
         <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
 
         {/* Confirmation dialog provider */}
@@ -115,4 +139,3 @@ export const App: React.FC = () => {
     </TooltipProvider>
   )
 }
-

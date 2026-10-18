@@ -1,9 +1,9 @@
-import { duration, ease, prefersReducedMotion } from '../../ui/motion'
 import type { Editor } from '@tiptap/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CaseSensitive, ChevronDown, ChevronUp, Replace, X } from 'lucide-react'
 import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { duration, ease, prefersReducedMotion } from '../../ui/motion'
 import { getSearchState, OPEN_FIND_REPLACE_EVENT } from './searchHighlight'
 
 interface FindReplaceBarProps {
@@ -235,4 +235,3 @@ export const FindReplaceBar: React.FC<FindReplaceBarProps> = ({ editor }) => {
     </AnimatePresence>
   )
 }
-

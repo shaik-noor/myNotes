@@ -1,7 +1,7 @@
 import { BookOpen, Library, Plus } from 'lucide-react'
 import type React from 'react'
-import { Button } from '../../ui/button'
 import type { Note } from '../../../types/notes'
+import { Button } from '../../ui/button'
 import { NoteGlyph } from '../noteIcon'
 import { NoteSection } from './NoteSection'
 
@@ -122,4 +122,3 @@ export const BookSubPagesGrid: React.FC<BookSubPagesGridProps> = ({
     </NoteSection>
   )
 }
-

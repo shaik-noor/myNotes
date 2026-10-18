@@ -1,14 +1,3 @@
-import { Button } from '../../ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '../../ui/dropdown-menu'
-import { StatusDot } from '../../ui/status-dot'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
-import { cn } from '../../ui/utils'
 import type { Editor } from '@tiptap/react'
 import {
   BookOpen,
@@ -26,6 +15,17 @@ import {
   Trash2
 } from 'lucide-react'
 import type React from 'react'
+import { Button } from '../../ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '../../ui/dropdown-menu'
+import { StatusDot } from '../../ui/status-dot'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
+import { cn } from '../../ui/utils'
 import { HeaderSearchBox } from './HeaderSearchBox'
 
 interface DocumentHeaderProps {
@@ -275,4 +275,3 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
     </div>
   )
 }
-

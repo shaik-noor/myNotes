@@ -44,4 +44,3 @@ export const CodeLanguageBar: React.FC<{ editor: Editor }> = ({ editor }) => (
     </Select>
   </div>
 )
-

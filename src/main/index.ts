@@ -1,11 +1,12 @@
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
-import type { AppSettings, Note, Result } from './types'
 import { BackupService } from './services/backupService'
 import { DatabaseService } from './services/databaseService'
+import { GoogleDriveService } from './services/googleDriveService'
 import { ImportService } from './services/importService'
 import { NoteAttachmentService } from './services/noteAttachmentService'
+import type { AppSettings, Note, Result } from './types'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -63,9 +64,12 @@ function createWindow(): void {
     console.log(`[Renderer ${level}] ${message} (${sourceId}:${line})`)
   })
 
-  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
-    console.error(`[Renderer load failed] ${errorCode}: ${errorDescription} (${validatedURL})`)
-  })
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL) => {
+      console.error(`[Renderer load failed] ${errorCode}: ${errorDescription} (${validatedURL})`)
+    }
+  )
 
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
@@ -100,7 +104,27 @@ function registerIpcHandlers(): void {
   ipcMain.handle('notes:load', () => wrapData(() => DatabaseService.loadNotes()))
 
   ipcMain.handle('notes:save', (_, notesList: Note[]) =>
-    wrapVoid(() => DatabaseService.saveNotes(notesList))
+    wrapVoid(() => {
+      DatabaseService.saveNotes(notesList)
+      GoogleDriveService.triggerAutoSyncDebounced()
+    })
+  )
+
+  // Cloud Sync (Google Drive AppData Vault)
+  ipcMain.handle('cloud:getConfig', () => wrapData(() => GoogleDriveService.getConfig()))
+
+  ipcMain.handle('cloud:saveCredentials', (_, clientId: string, clientSecret?: string) =>
+    wrapData(() => GoogleDriveService.saveCredentials(clientId, clientSecret))
+  )
+
+  ipcMain.handle('cloud:login', () => GoogleDriveService.startLogin())
+
+  ipcMain.handle('cloud:logout', () => GoogleDriveService.logout())
+
+  ipcMain.handle('cloud:syncNow', () => GoogleDriveService.syncNow())
+
+  ipcMain.handle('cloud:setAutoSync', (_, enabled: boolean) =>
+    wrapData(() => GoogleDriveService.setAutoSync(enabled))
   )
 
   ipcMain.handle(
@@ -194,7 +218,12 @@ function registerIpcHandlers(): void {
   // Graceful AI stream handler (for inline "Improve writing" ghost preview)
   ipcMain.handle(
     'ai:chatCompletionStream',
-    async (event, streamId: string, _systemPrompt: string, messages: { role: string; content: string }[]) => {
+    async (
+      event,
+      streamId: string,
+      _systemPrompt: string,
+      messages: { role: string; content: string }[]
+    ) => {
       // If user tries inline "Improve writing", simulate a clean rewrite stream
       const userMessage = messages[messages.length - 1]?.content ?? ''
       const sender = event.sender
@@ -246,6 +275,14 @@ app.whenReady().then(() => {
   DatabaseService.getDb()
   registerIpcHandlers()
   createWindow()
+
+  // Start background periodic sync and perform initial sync if connected
+  GoogleDriveService.startPeriodicSync()
+  if (GoogleDriveService.isConnected()) {
+    setTimeout(() => {
+      GoogleDriveService.syncNow().catch((e) => console.error('Startup cloud sync failed:', e))
+    }, 2000)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

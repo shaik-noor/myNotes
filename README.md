@@ -27,6 +27,12 @@ A modern, standalone desktop knowledge workspace and note-taking application pow
   - Responsive backlinks panel showing all pages referencing the active note.
 - **Side Peek Modal**:
   - Read-only slide-out panel to preview linked pages without losing editor context.
+- **Google Drive Cloud Sync (BYOC / Zero-Server Privacy)**:
+  - Connect with personal Google account using RFC 8252 PKCE loopback authentication.
+  - Stores all documents and attachments inside the private Google Drive **Application Data folder** (`mynotes_vault.json`).
+  - High-privacy scope: app cannot access, read, or modify any other files in the user's Google Drive.
+  - Local-first architecture: edits are instant on local SQLite and auto-sync in the background.
+  - Mobile-ready: future iOS/Android builds connect to the same Google Drive vault.
 - **Import & Backup**:
   - Import Markdown, TXT, HTML, and OneNote files.
   - Full SQLite database backup and restore to JSON archives.

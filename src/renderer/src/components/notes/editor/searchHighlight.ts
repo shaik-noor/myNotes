@@ -88,7 +88,9 @@ function getScrollParentY(el: HTMLElement | null): HTMLElement | null {
 function scrollMatchIntoView(view: EditorView, from: number): void {
   requestAnimationFrame(() => {
     try {
-      const active = view.dom.querySelector<HTMLElement>('.mydesk-search-match.is-active, .mynotes-search-match.is-active')
+      const active = view.dom.querySelector<HTMLElement>(
+        '.mydesk-search-match.is-active, .mynotes-search-match.is-active'
+      )
       const el =
         active ??
         (() => {
@@ -245,4 +247,3 @@ export function getSearchState(editor: Editor): {
     caseSensitive: s.caseSensitive
   }
 }
-

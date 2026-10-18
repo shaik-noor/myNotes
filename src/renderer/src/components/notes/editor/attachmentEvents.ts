@@ -10,4 +10,3 @@ export const NOTE_ATTACHMENTS_CHANGED_EVENT = 'notes:attachments-changed'
 export function emitNoteAttachmentsChanged(noteId: string): void {
   window.dispatchEvent(new CustomEvent(NOTE_ATTACHMENTS_CHANGED_EVENT, { detail: { noteId } }))
 }
-

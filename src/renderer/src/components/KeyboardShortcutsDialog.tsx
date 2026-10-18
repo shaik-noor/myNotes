@@ -1,11 +1,5 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from './ui/dialog'
 import type React from 'react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 
 interface KeyboardShortcutsDialogProps {
   open: boolean
@@ -96,4 +90,3 @@ export const KeyboardShortcutsDialog: React.FC<KeyboardShortcutsDialogProps> = (
     </Dialog>
   )
 }
-

@@ -1,9 +1,9 @@
-import { Button } from '../../ui/button'
-import { Popover, PopoverAnchor, PopoverContent } from '../../ui/popover'
 import type { Editor } from '@tiptap/react'
 import { Check, ExternalLink, Link as LinkIcon, Trash2 } from 'lucide-react'
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { Button } from '../../ui/button'
+import { Popover, PopoverAnchor, PopoverContent } from '../../ui/popover'
 import { OPEN_LINK_POPOVER_EVENT } from './editorExtensions'
 
 interface LinkPopoverProps {
@@ -130,4 +130,3 @@ export const LinkPopover: React.FC<LinkPopoverProps> = ({ editor }) => {
     </Popover>
   )
 }
-

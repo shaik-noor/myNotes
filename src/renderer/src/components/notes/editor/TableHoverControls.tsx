@@ -2,8 +2,8 @@ import type { Editor } from '@tiptap/react'
 import { Check, Copy, Plus, SquareDashedMousePointer } from 'lucide-react'
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
 import { toast } from '../../ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
 import { cn } from '../../ui/utils'
 import {
   addColumnAtEnd,
@@ -242,4 +242,3 @@ function ToolbarButton({
     </Tooltip>
   )
 }
-

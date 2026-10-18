@@ -1,4 +1,3 @@
-import { ContextMenu, ContextMenuTrigger } from '../../ui/context-menu'
 import { generateJSON } from '@tiptap/core'
 import { DragHandle } from '@tiptap/extension-drag-handle-react'
 import { type Editor, EditorContent, useEditor } from '@tiptap/react'
@@ -6,6 +5,7 @@ import { BubbleMenu } from '@tiptap/react/menus'
 import { GripVertical } from 'lucide-react'
 import type React from 'react'
 import { useCallback, useEffect, useRef } from 'react'
+import { ContextMenu, ContextMenuTrigger } from '../../ui/context-menu'
 import { CodeLanguageBar } from './CodeLanguageBar'
 import { buildEditorExtensions } from './editorExtensions'
 import { buildNotesEditorProps } from './editorProps'
@@ -158,4 +158,3 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
     </div>
   )
 }
-

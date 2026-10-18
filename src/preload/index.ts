@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, type IpcRendererEvent, ipcRenderer } from 'electron'
 
 export interface StreamEvent {
   type: 'start' | 'chunk' | 'done' | 'error' | 'canceled'
@@ -68,6 +68,34 @@ const api = {
       }
     },
     cancelStream: (streamId: string) => ipcRenderer.invoke('ai:cancelStream', streamId)
+  },
+
+  cloud: {
+    getConfig: () => ipcRenderer.invoke('cloud:getConfig'),
+    saveCredentials: (clientId: string, clientSecret?: string) =>
+      ipcRenderer.invoke('cloud:saveCredentials', clientId, clientSecret),
+    login: () => ipcRenderer.invoke('cloud:login'),
+    logout: () => ipcRenderer.invoke('cloud:logout'),
+    syncNow: () => ipcRenderer.invoke('cloud:syncNow'),
+    setAutoSync: (enabled: boolean) => ipcRenderer.invoke('cloud:setAutoSync', enabled),
+    onSyncStatusChange: (callback: (data: unknown) => void) => {
+      const listener = (_: IpcRendererEvent, data: unknown) => callback(data)
+      ipcRenderer.on('cloud:sync-started', listener)
+      ipcRenderer.on('cloud:sync-completed', listener)
+      ipcRenderer.on('cloud:sync-error', listener)
+      return () => {
+        ipcRenderer.removeListener('cloud:sync-started', listener)
+        ipcRenderer.removeListener('cloud:sync-completed', listener)
+        ipcRenderer.removeListener('cloud:sync-error', listener)
+      }
+    },
+    onVaultUpdated: (callback: (data: unknown) => void) => {
+      const listener = (_: IpcRendererEvent, data: unknown) => callback(data)
+      ipcRenderer.on('cloud:vault-updated', listener)
+      return () => {
+        ipcRenderer.removeListener('cloud:vault-updated', listener)
+      }
+    }
   }
 }
 
@@ -78,6 +106,6 @@ if (process.contextIsolated) {
     console.error(error)
   }
 } else {
-  // @ts-ignore (define in dts)
+  // @ts-expect-error (define in dts)
   window.api = api
 }

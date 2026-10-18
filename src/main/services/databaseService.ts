@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
-import { app } from 'electron'
 import Database from 'better-sqlite3'
+import { app } from 'electron'
 import { generateKeyBetween } from 'fractional-indexing'
 import type { AppSettings, BackupManifest, Note, NoteAttachmentRow } from '../types'
 
@@ -88,6 +88,11 @@ export class DatabaseService {
       );
 
       CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS cloud_sync (
         key TEXT PRIMARY KEY,
         value TEXT
       );
@@ -424,5 +429,98 @@ export class DatabaseService {
 
     transaction()
   }
-}
 
+  static getCloudSyncValue(key: string): string | null {
+    const db = DatabaseService.getDb()
+    const row = db.prepare('SELECT value FROM cloud_sync WHERE key = ?').get(key) as
+      | { value: string }
+      | undefined
+    return row ? row.value : null
+  }
+
+  static setCloudSyncValue(key: string, value: string | null): void {
+    const db = DatabaseService.getDb()
+    if (value === null) {
+      db.prepare('DELETE FROM cloud_sync WHERE key = ?').run(key)
+    } else {
+      db.prepare(
+        'INSERT INTO cloud_sync (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+      ).run(key, value)
+    }
+  }
+
+  static clearCloudSync(): void {
+    const db = DatabaseService.getDb()
+    db.prepare('DELETE FROM cloud_sync').run()
+  }
+
+  static mergeVaultFromCloud(remoteManifest: BackupManifest): {
+    notesCount: number
+    changed: boolean
+  } {
+    const localManifest = DatabaseService.exportBackup()
+    const localNotesMap = new Map<string, Note>(localManifest.notes.map((n) => [n.id, n]))
+    const remoteNotes = remoteManifest.notes || []
+
+    let changed = false
+    const mergedNotes: Note[] = []
+    const processedIds = new Set<string>()
+
+    // Compare remote notes with local notes
+    for (const rNote of remoteNotes) {
+      processedIds.add(rNote.id)
+      const lNote = localNotesMap.get(rNote.id)
+      if (!lNote) {
+        // Remote note is new
+        mergedNotes.push(rNote)
+        changed = true
+      } else {
+        const rTime = new Date(rNote.updatedAt || 0).getTime()
+        const lTime = new Date(lNote.updatedAt || 0).getTime()
+        if (rTime > lTime) {
+          mergedNotes.push(rNote)
+          changed = true
+        } else {
+          mergedNotes.push(lNote)
+        }
+      }
+    }
+
+    // Preserve any local notes not yet in remote
+    for (const [id, lNote] of localNotesMap) {
+      if (!processedIds.has(id)) {
+        mergedNotes.push(lNote)
+      }
+    }
+
+    if (changed) {
+      DatabaseService.saveNotes(mergedNotes)
+    }
+
+    // Merge attachments if provided
+    if (remoteManifest.noteAttachments) {
+      const db = DatabaseService.getDb()
+      const existingAttachmentIds = new Set(
+        (db.prepare('SELECT id FROM note_attachments').all() as { id: string }[]).map((a) => a.id)
+      )
+      const insertAtt = db.prepare(`
+        INSERT INTO note_attachments (id, noteId, name, kind, ext, mime, size, data, createdAt)
+        VALUES (@id, @noteId, @name, @kind, @ext, @mime, @size, @data, @createdAt)
+      `)
+      for (const attList of Object.values(remoteManifest.noteAttachments)) {
+        for (const att of attList) {
+          if (!existingAttachmentIds.has(att.id)) {
+            try {
+              insertAtt.run(att)
+              changed = true
+            } catch (e) {
+              console.error('Error inserting synced attachment:', e)
+            }
+          }
+        }
+      }
+    }
+
+    return { notesCount: mergedNotes.length, changed }
+  }
+}

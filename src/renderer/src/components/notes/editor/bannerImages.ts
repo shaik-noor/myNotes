@@ -106,7 +106,12 @@ export const BANNER_IMAGES: BannerImage[] = [
   { id: 'glass-facade', name: 'Glass Facade', url: glassFacade, category: 'Architecture' },
   { id: 'spiral-stairs', name: 'Spiral Stairs', url: spiralStairs, category: 'Architecture' },
   { id: 'brutalist-forms', name: 'Brutalist Forms', url: brutalistForms, category: 'Architecture' },
-  { id: 'architecture-lines', name: 'Architecture Lines', url: architectureLines, category: 'Architecture' },
+  {
+    id: 'architecture-lines',
+    name: 'Architecture Lines',
+    url: architectureLines,
+    category: 'Architecture'
+  },
   { id: 'modern-building', name: 'Modern Building', url: modernBuilding, category: 'Architecture' },
   { id: 'city-skyline', name: 'City Skyline', url: citySkyline, category: 'Architecture' },
   { id: 'golden-gate', name: 'Golden Gate', url: goldenGate, category: 'Architecture' },
@@ -170,4 +175,3 @@ export function resolveCoverImage(coverImage: string | undefined): string | unde
   }
   return coverImage
 }
-

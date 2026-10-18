@@ -1,7 +1,7 @@
-import type { NoteAttachment } from '../../../types/notes'
 import type { EditorView } from '@tiptap/pm/view'
 import type { Editor } from '@tiptap/react'
 import { NOTE_ATTACHMENT_SCHEME } from '../../../services/noteAttachments'
+import type { NoteAttachment } from '../../../types/notes'
 
 /** True for an attachment we render inline as an image. */
 function isImage(att: NoteAttachment): boolean {
@@ -41,4 +41,3 @@ export function insertAttachmentIntoView(view: EditorView, att: NoteAttachment):
   const textNode = schema.text(att.name, linkMark ? [linkMark.create({ href })] : [])
   view.dispatch(tr.replaceSelectionWith(textNode).scrollIntoView())
 }
-

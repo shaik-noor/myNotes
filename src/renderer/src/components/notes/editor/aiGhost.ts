@@ -153,4 +153,3 @@ export function getAiGhostRange(
   if (!state) return null
   return { from: state.from, to: state.to, mode: state.mode }
 }
-

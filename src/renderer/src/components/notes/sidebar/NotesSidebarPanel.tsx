@@ -1,19 +1,3 @@
-import { EmptyState } from '../../ui/EmptyState'
-import { ScrollableList } from '../../ui/ScrollableList'
-import { Button } from '../../ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '../../ui/dropdown-menu'
-import { Skeleton } from '../../ui/skeleton'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
-import { confirmDialog } from '../../ui/confirm'
-import { springTransition } from '../../ui/motion'
-import { toast } from '../../ui/toast'
-import { cn } from '../../ui/utils'
 import { motion } from 'framer-motion'
 import {
   BookOpen,
@@ -37,6 +21,22 @@ import {
 import type React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { buildNoteTree, useNotesStore } from '../../../store/useNotesStore'
+import { Button } from '../../ui/button'
+import { confirmDialog } from '../../ui/confirm'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '../../ui/dropdown-menu'
+import { EmptyState } from '../../ui/EmptyState'
+import { springTransition } from '../../ui/motion'
+import { ScrollableList } from '../../ui/ScrollableList'
+import { Skeleton } from '../../ui/skeleton'
+import { toast } from '../../ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
+import { cn } from '../../ui/utils'
 import { NoteGlyph } from '../noteIcon'
 import { NoteTreeRow, SelectBox } from './NoteTreeRow'
 
@@ -161,20 +161,18 @@ export function NotesSidebarPanel(): React.JSX.Element {
 
   const filteredNotes = useMemo(() => {
     const q = notesSearchQuery.toLowerCase()
-    return (
-      notes
-        .filter((n) => {
-          if (!q) return true
-          return n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
-        })
-        .filter((n) => (activeTag ? (n.tags ?? []).includes(activeTag) : true))
-        .sort((a, b) => {
-          if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1
-          const at = a.updatedAt || a.createdAt || ''
-          const bt = b.updatedAt || b.createdAt || ''
-          return bt.localeCompare(at)
-        })
-    )
+    return notes
+      .filter((n) => {
+        if (!q) return true
+        return n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+      })
+      .filter((n) => (activeTag ? (n.tags ?? []).includes(activeTag) : true))
+      .sort((a, b) => {
+        if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1
+        const at = a.updatedAt || a.createdAt || ''
+        const bt = b.updatedAt || b.createdAt || ''
+        return bt.localeCompare(at)
+      })
   }, [notes, notesSearchQuery, activeTag])
 
   const showTree = !notesSearchQuery.trim() && !activeTag
@@ -709,4 +707,3 @@ function CreateMenuItem({
     </DropdownMenuItem>
   )
 }
-

@@ -1,9 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { App } from './App'
-import { ThemeProvider } from './context/ThemeContext'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { TooltipProvider } from './components/ui/tooltip'
+import { ThemeProvider } from './context/ThemeContext'
 import './assets/main.css'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
@@ -17,4 +17,3 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     </ErrorBoundary>
   </React.StrictMode>
 )
-

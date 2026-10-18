@@ -1,4 +1,3 @@
-import { toast } from '../../ui/toast'
 import { type Editor, useEditorState } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import {
@@ -13,6 +12,7 @@ import {
 } from 'lucide-react'
 import type React from 'react'
 import { useNotesStore } from '../../../store/useNotesStore'
+import { toast } from '../../ui/toast'
 import { OPEN_LINK_POPOVER_EVENT } from './editorExtensions'
 
 interface SelectionBubbleMenuProps {
@@ -188,4 +188,3 @@ export const SelectionBubbleMenu: React.FC<SelectionBubbleMenuProps> = ({
     </BubbleMenu>
   )
 }
-

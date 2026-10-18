@@ -1,6 +1,6 @@
-import { toast } from '../../ui/toast'
 import type { Editor } from '@tiptap/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { toast } from '../../ui/toast'
 import { type AiGhostMode, getAiGhostRange } from '../editor/aiGhost'
 import { AI_SYSTEM_PROMPT, buildRewritePrompt, REWRITE_LABEL, stripCodeFences } from './aiActions'
 
@@ -166,7 +166,9 @@ export function useAiInline(model: string): {
         requestRef.current = null
         setState(IDLE)
         if (!res.success) {
-          toast.error('AI generation failed', { description: res.error || 'No content was generated.' })
+          toast.error('AI generation failed', {
+            description: res.error || 'No content was generated.'
+          })
         }
       }
     },

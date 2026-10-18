@@ -101,4 +101,3 @@ export function buildEditorExtensions(noteId: string): AnyExtension[] {
     PageMention
   ]
 }
-

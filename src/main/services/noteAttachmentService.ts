@@ -9,13 +9,51 @@ export class NoteAttachmentService {
   private static readonly MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
 
   private static readonly TEXT_EXTS = new Set([
-    'txt', 'md', 'markdown', 'json', 'yaml', 'yml', 'xml', 'html', 'htm', 'css',
-    'js', 'jsx', 'ts', 'tsx', 'py', 'java', 'c', 'cpp', 'h', 'cs', 'go', 'rs',
-    'rb', 'php', 'sh', 'bash', 'sql', 'ini', 'conf', 'toml', 'log', 'csv'
+    'txt',
+    'md',
+    'markdown',
+    'json',
+    'yaml',
+    'yml',
+    'xml',
+    'html',
+    'htm',
+    'css',
+    'js',
+    'jsx',
+    'ts',
+    'tsx',
+    'py',
+    'java',
+    'c',
+    'cpp',
+    'h',
+    'cs',
+    'go',
+    'rs',
+    'rb',
+    'php',
+    'sh',
+    'bash',
+    'sql',
+    'ini',
+    'conf',
+    'toml',
+    'log',
+    'csv'
   ])
 
   private static readonly IMAGE_EXTS = new Set([
-    'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tif', 'tiff'
+    'png',
+    'jpg',
+    'jpeg',
+    'gif',
+    'webp',
+    'bmp',
+    'svg',
+    'ico',
+    'tif',
+    'tiff'
   ])
 
   private static readonly MIME_BY_EXT: Record<string, string> = {
@@ -133,8 +171,7 @@ export class NoteAttachmentService {
         }
         DatabaseService.saveNoteAttachment(row)
 
-        const previewDataUrl =
-          kind === 'image' ? `data:${mime};base64,${row.data}` : undefined
+        const previewDataUrl = kind === 'image' ? `data:${mime};base64,${row.data}` : undefined
 
         results.push({
           id,
@@ -300,4 +337,3 @@ export class NoteAttachmentService {
     return true
   }
 }
-

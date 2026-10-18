@@ -14,7 +14,8 @@ export const NOTE_TEMPLATES: NoteTemplate[] = [
     title: 'Meeting Notes',
     icon: '📋',
     category: 'Productivity',
-    description: 'Structure agenda items, attendee notes, key decisions, and follow-up action items.',
+    description:
+      'Structure agenda items, attendee notes, key decisions, and follow-up action items.',
     tags: ['meeting', 'work'],
     content: `# 📋 Meeting: [Topic / Purpose]
 
@@ -47,7 +48,8 @@ export const NOTE_TEMPLATES: NoteTemplate[] = [
     title: 'Project Brief & Spec',
     icon: '🚀',
     category: 'Project',
-    description: 'Define problem statements, goals, non-goals, architecture design, and milestone timelines.',
+    description:
+      'Define problem statements, goals, non-goals, architecture design, and milestone timelines.',
     tags: ['project', 'spec', 'roadmap'],
     content: `# 🚀 Project Spec: [Project Title]
 
@@ -82,7 +84,8 @@ What problem are we solving? Why is it important to solve now?
     title: 'Daily Journal & Reflection',
     icon: '☀️',
     category: 'Personal',
-    description: 'Track your top 3 daily priorities, brain dump thoughts, celebrate wins, and practice gratitude.',
+    description:
+      'Track your top 3 daily priorities, brain dump thoughts, celebrate wins, and practice gratitude.',
     tags: ['journal', 'daily', 'reflection'],
     content: `# ☀️ Daily Journal — ${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
 
@@ -112,7 +115,8 @@ What problem are we solving? Why is it important to solve now?
     title: 'Engineering Runbook',
     icon: '🛠️',
     category: 'Engineering',
-    description: 'Operational runbook with architecture overview, deployment steps, health checks, and incident recovery.',
+    description:
+      'Operational runbook with architecture overview, deployment steps, health checks, and incident recovery.',
     tags: ['engineering', 'devops', 'runbook'],
     content: `# 🛠️ Runbook: [Service / System Name]
 
@@ -153,7 +157,8 @@ npm run build
     title: 'Idea Sandbox & Brainstorm',
     icon: '💡',
     category: 'Productivity',
-    description: 'Explore wild concepts, weigh pros and cons, assess risks, and formulate experimental next steps.',
+    description:
+      'Explore wild concepts, weigh pros and cons, assess risks, and formulate experimental next steps.',
     tags: ['ideas', 'brainstorming'],
     content: `# 💡 Idea Sandbox: [Concept Name]
 
@@ -186,7 +191,8 @@ What is the core breakthrough idea in a single sentence?
     title: 'Sprint Planning',
     icon: '🎯',
     category: 'Project',
-    description: 'Organize sprint goals, high/medium priority backlogs, user stories, and blocker mitigation.',
+    description:
+      'Organize sprint goals, high/medium priority backlogs, user stories, and blocker mitigation.',
     tags: ['sprint', 'agile', 'planning'],
     content: `# 🎯 Sprint Planning: [Sprint Name / Week]
 

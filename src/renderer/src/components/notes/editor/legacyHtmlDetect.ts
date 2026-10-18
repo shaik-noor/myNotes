@@ -20,4 +20,3 @@ export function decodeHtmlEntities(content: string): string {
   el.innerHTML = content
   return el.value
 }
-

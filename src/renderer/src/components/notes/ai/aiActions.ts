@@ -25,4 +25,3 @@ export function stripCodeFences(response: string): string {
   }
   return cleaned
 }
-

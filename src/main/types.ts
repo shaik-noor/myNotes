@@ -83,3 +83,23 @@ export interface BackupManifest {
   settings?: AppSettings
 }
 
+export interface CloudSyncConfig {
+  clientId?: string
+  clientSecret?: string
+  userEmail?: string | null
+  userName?: string | null
+  userPicture?: string | null
+  autoSync: boolean
+  lastSyncTime?: string | null
+  isConnected: boolean
+  isSyncing: boolean
+  lastError?: string | null
+  fileId?: string | null
+}
+
+export interface CloudSyncResult {
+  notesCount: number
+  uploaded: boolean
+  downloaded: boolean
+  timestamp: string
+}

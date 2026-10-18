@@ -1,7 +1,7 @@
-import { toast } from '../../ui/toast'
 import type { EditorProps, EditorView } from '@tiptap/pm/view'
-import { useNotesStore } from '../../../store/useNotesStore'
 import { attachmentIdFromUrl, NoteAttachmentsService } from '../../../services/noteAttachments'
+import { useNotesStore } from '../../../store/useNotesStore'
+import { toast } from '../../ui/toast'
 import { emitNoteAttachmentsChanged } from './attachmentEvents'
 import { insertAttachmentIntoView } from './attachmentInsert'
 import { handleTableCopy } from './clipboardHtml'
@@ -92,4 +92,3 @@ export function buildNotesEditorProps(noteId: string): EditorProps {
     }
   }
 }
-

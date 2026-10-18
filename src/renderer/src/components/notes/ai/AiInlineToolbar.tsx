@@ -104,4 +104,3 @@ export const AiInlineToolbar: React.FC<AiInlineToolbarProps> = ({
     document.body
   )
 }
-

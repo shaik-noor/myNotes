@@ -91,4 +91,3 @@ export const NoteTagsBar: React.FC<NoteTagsBarProps> = ({ tags, onChange }) => {
     </div>
   )
 }
-

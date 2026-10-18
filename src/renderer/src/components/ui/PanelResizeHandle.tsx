@@ -26,4 +26,3 @@ export const PanelResizeHandle: React.FC<{
     </div>
   </div>
 )
-

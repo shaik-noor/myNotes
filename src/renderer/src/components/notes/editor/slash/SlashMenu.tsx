@@ -121,4 +121,3 @@ export const SlashMenu = forwardRef<SlashMenuHandle, SlashMenuProps>(function Sl
     </div>
   )
 })
-

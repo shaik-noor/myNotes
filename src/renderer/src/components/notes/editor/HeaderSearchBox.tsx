@@ -126,4 +126,3 @@ export const HeaderSearchBox: React.FC<HeaderSearchBoxProps> = ({ editor }) => {
     </div>
   )
 }
-

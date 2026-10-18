@@ -1,12 +1,12 @@
-import type { Note } from '../../../types/notes'
-import { MarkdownRenderer } from '../../ui/MarkdownRenderer'
-import { PanelResizeHandle } from '../../ui/PanelResizeHandle'
-import { Button } from '../../ui/button'
-import { useResizablePanel } from '../../ui/useResizablePanel'
-import { duration, ease, prefersReducedMotion } from '../../ui/motion'
 import { motion } from 'framer-motion'
 import { ArrowUpRightFromSquare, PanelRightClose } from 'lucide-react'
 import type React from 'react'
+import type { Note } from '../../../types/notes'
+import { Button } from '../../ui/button'
+import { MarkdownRenderer } from '../../ui/MarkdownRenderer'
+import { duration, ease, prefersReducedMotion } from '../../ui/motion'
+import { PanelResizeHandle } from '../../ui/PanelResizeHandle'
+import { useResizablePanel } from '../../ui/useResizablePanel'
 import { NoteGlyph } from '../noteIcon'
 
 interface NotePeekPanelProps {

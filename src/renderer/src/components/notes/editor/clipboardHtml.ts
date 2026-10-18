@@ -48,4 +48,3 @@ export function handleTableCopy(view: EditorView, event: ClipboardEvent): boolea
   }
   return true
 }
-

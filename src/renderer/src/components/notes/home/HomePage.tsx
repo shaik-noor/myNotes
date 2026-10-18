@@ -1,6 +1,4 @@
-import type React from 'react'
-import { useMemo, useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   BookOpen,
   Calendar,
@@ -22,6 +20,8 @@ import {
   X,
   Zap
 } from 'lucide-react'
+import type React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Note } from '../../../types/notes'
 import { Button } from '../../ui/button'
 import {
@@ -31,12 +31,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '../../ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
 import { toast } from '../../ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
 import { cn } from '../../ui/utils'
 import { NoteGlyph } from '../noteIcon'
-import { NOTE_TEMPLATES, type NoteTemplate } from './noteTemplates'
 import { shortAge } from '../sidebar/NotesSidebarPanel'
+import { NOTE_TEMPLATES, type NoteTemplate } from './noteTemplates'
 
 export function stripMarkdown(content?: string): string {
   if (!content) return ''
@@ -102,8 +102,12 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [sortMode, setSortMode] = useState<SortMode>('updated')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [showScratchpad, setShowScratchpad] = useState(false)
-  const [scratchTitle, setScratchTitle] = useState(() => localStorage.getItem(SCRATCHPAD_TITLE_KEY) || '')
-  const [scratchContent, setScratchContent] = useState(() => localStorage.getItem(SCRATCHPAD_KEY) || '')
+  const [scratchTitle, setScratchTitle] = useState(
+    () => localStorage.getItem(SCRATCHPAD_TITLE_KEY) || ''
+  )
+  const [scratchContent, setScratchContent] = useState(
+    () => localStorage.getItem(SCRATCHPAD_KEY) || ''
+  )
 
   // Persist scratchpad
   useEffect(() => {
@@ -124,8 +128,14 @@ export const HomePage: React.FC<HomePageProps> = ({
   }, [])
 
   // Derived sets
-  const parentIds = useMemo(() => new Set(notes.map((n) => n.parentId).filter(Boolean) as string[]), [notes])
-  const booksCount = useMemo(() => notes.filter((n) => parentIds.has(n.id)).length, [notes, parentIds])
+  const parentIds = useMemo(
+    () => new Set(notes.map((n) => n.parentId).filter(Boolean) as string[]),
+    [notes]
+  )
+  const booksCount = useMemo(
+    () => notes.filter((n) => parentIds.has(n.id)).length,
+    [notes, parentIds]
+  )
   const pinnedNotes = useMemo(() => notes.filter((n) => !!n.pinned), [notes])
   const childCountMap = useMemo(() => {
     const map = new Map<string, number>()
@@ -162,7 +172,9 @@ export const HomePage: React.FC<HomePageProps> = ({
     // Active tab
     if (activeTab === 'recent') {
       // Top recent 20
-      result = result.sort((a, b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt))
+      result = result.sort((a, b) =>
+        (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)
+      )
     } else if (activeTab === 'pinned') {
       result = result.filter((n) => !!n.pinned)
     } else if (activeTab === 'books') {
@@ -238,7 +250,8 @@ export const HomePage: React.FC<HomePageProps> = ({
               {greeting}, <span className="text-notes">Shaik</span> 👋
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
-              Welcome back to your personal workspace. Capture ideas, organize runbooks, and manage documentation effortlessly.
+              Welcome back to your personal workspace. Capture ideas, organize runbooks, and manage
+              documentation effortlessly.
             </p>
           </div>
 
@@ -266,7 +279,12 @@ export const HomePage: React.FC<HomePageProps> = ({
               onClick={() => setShowScratchpad((v) => !v)}
               className="h-8 gap-1.5 rounded-lg border-border/70 hover:bg-muted text-xs"
             >
-              <Zap className={cn('size-3.5', showScratchpad ? 'text-amber-500 fill-amber-500/20' : 'text-amber-500')} />
+              <Zap
+                className={cn(
+                  'size-3.5',
+                  showScratchpad ? 'text-amber-500 fill-amber-500/20' : 'text-amber-500'
+                )}
+              />
               Quick Jot
             </Button>
 
@@ -276,7 +294,11 @@ export const HomePage: React.FC<HomePageProps> = ({
               disabled={importing}
               className="h-8 gap-1.5 rounded-lg border-border/70 hover:bg-muted text-xs"
             >
-              {importing ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+              {importing ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Download className="size-3.5" />
+              )}
               Import
             </Button>
           </div>
@@ -300,7 +322,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </span>
                     <div>
                       <h3 className="text-xs font-bold text-foreground">Rapid Scratchpad</h3>
-                      <p className="text-2xs text-muted-foreground">Type thoughts quickly — auto-saved locally until saved as a note.</p>
+                      <p className="text-2xs text-muted-foreground">
+                        Type thoughts quickly — auto-saved locally until saved as a note.
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -452,8 +476,12 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="size-4 text-notes" />
-              <h2 className="text-sm font-bold tracking-tight text-foreground">Starter Templates</h2>
-              <span className="text-2xs text-muted-foreground hidden sm:inline">• Jumpstart documentation in one click</span>
+              <h2 className="text-sm font-bold tracking-tight text-foreground">
+                Starter Templates
+              </h2>
+              <span className="text-2xs text-muted-foreground hidden sm:inline">
+                • Jumpstart documentation in one click
+              </span>
             </div>
           </div>
 
@@ -486,7 +514,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2.5">
                   <div className="flex items-center gap-1">
                     {tmpl.tags.slice(0, 2).map((t) => (
-                      <span key={t} className="rounded-md bg-muted/50 px-1.5 py-0.5 text-3xs text-muted-foreground/80">
+                      <span
+                        key={t}
+                        className="rounded-md bg-muted/50 px-1.5 py-0.5 text-3xs text-muted-foreground/80"
+                      >
                         #{t}
                       </span>
                     ))}
@@ -506,7 +537,9 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Pin className="size-4 text-amber-500 fill-amber-500/20" />
-                <h2 className="text-sm font-bold tracking-tight text-foreground">Pinned Favorites</h2>
+                <h2 className="text-sm font-bold tracking-tight text-foreground">
+                  Pinned Favorites
+                </h2>
                 <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-2xs font-semibold text-amber-500 tabular-nums">
                   {pinnedNotes.length}
                 </span>
@@ -522,7 +555,11 @@ export const HomePage: React.FC<HomePageProps> = ({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <NoteGlyph icon={note.icon} isBook={parentIds.has(note.id)} className="size-4" />
+                      <NoteGlyph
+                        icon={note.icon}
+                        isBook={parentIds.has(note.id)}
+                        className="size-4"
+                      />
                       <h4 className="truncate text-xs font-bold text-foreground group-hover:text-amber-500 transition-colors">
                         {note.title || 'Untitled'}
                       </h4>
@@ -545,7 +582,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                   </div>
 
                   <p className="mt-2 line-clamp-2 text-2xs leading-relaxed text-muted-foreground">
-                    {stripMarkdown(note.content) || <span className="italic text-muted-foreground/60">No additional text</span>}
+                    {stripMarkdown(note.content) || (
+                      <span className="italic text-muted-foreground/60">No additional text</span>
+                    )}
                   </p>
 
                   <div className="mt-3 flex items-center justify-between text-3xs text-muted-foreground/80 border-t border-border/40 pt-2">
@@ -556,7 +595,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                         </span>
                       ))}
                     </div>
-                    <span className="tabular-nums">{shortAge(note.updatedAt || note.createdAt)}</span>
+                    <span className="tabular-nums">
+                      {shortAge(note.updatedAt || note.createdAt)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -594,7 +635,12 @@ export const HomePage: React.FC<HomePageProps> = ({
                     )}
                   >
                     <span>{tab.label}</span>
-                    <span className={cn('text-2xs tabular-nums', active ? 'opacity-80' : 'text-muted-foreground/60')}>
+                    <span
+                      className={cn(
+                        'text-2xs tabular-nums',
+                        active ? 'opacity-80' : 'text-muted-foreground/60'
+                      )}
+                    >
                       {tab.count}
                     </span>
                   </button>
@@ -628,10 +674,18 @@ export const HomePage: React.FC<HomePageProps> = ({
               {/* Sort Selector */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs border-border/60">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs border-border/60"
+                  >
                     <Filter className="size-3.5 text-muted-foreground" />
                     <span className="hidden sm:inline">
-                      {sortMode === 'updated' ? 'Recently Updated' : sortMode === 'created' ? 'Recently Created' : 'Title A-Z'}
+                      {sortMode === 'updated'
+                        ? 'Recently Updated'
+                        : sortMode === 'created'
+                          ? 'Recently Created'
+                          : 'Title A-Z'}
                     </span>
                     <ChevronDown className="size-3 text-muted-foreground" />
                   </Button>
@@ -656,7 +710,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                   onClick={() => setViewMode('grid')}
                   className={cn(
                     'p-1.5 rounded-md transition-colors cursor-pointer',
-                    viewMode === 'grid' ? 'bg-background text-notes shadow-2xs' : 'text-muted-foreground hover:text-foreground'
+                    viewMode === 'grid'
+                      ? 'bg-background text-notes shadow-2xs'
+                      : 'text-muted-foreground hover:text-foreground'
                   )}
                   title="Grid view"
                 >
@@ -667,7 +723,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                   onClick={() => setViewMode('table')}
                   className={cn(
                     'p-1.5 rounded-md transition-colors cursor-pointer',
-                    viewMode === 'table' ? 'bg-background text-notes shadow-2xs' : 'text-muted-foreground hover:text-foreground'
+                    viewMode === 'table'
+                      ? 'bg-background text-notes shadow-2xs'
+                      : 'text-muted-foreground hover:text-foreground'
                   )}
                   title="List view"
                 >
@@ -768,7 +826,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                           </h4>
                         </div>
 
-                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className="flex items-center gap-1 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {note.pinned && (
                             <span className="text-amber-500" title="Pinned">
                               <Pin className="size-3.5 fill-amber-500/20" />
@@ -812,7 +873,9 @@ export const HomePage: React.FC<HomePageProps> = ({
 
                       {/* Excerpt */}
                       <p className="mt-2.5 line-clamp-3 text-2xs leading-relaxed text-muted-foreground/90 font-sans">
-                        {excerpt || <span className="italic text-muted-foreground/50">Empty page</span>}
+                        {excerpt || (
+                          <span className="italic text-muted-foreground/50">Empty page</span>
+                        )}
                       </p>
                     </div>
 
@@ -879,7 +942,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                           </span>
                         )}
                         {(note.tags ?? []).slice(0, 2).map((t) => (
-                          <span key={t} className="rounded bg-muted/60 px-1.5 py-0.5 text-3xs text-muted-foreground">
+                          <span
+                            key={t}
+                            className="rounded bg-muted/60 px-1.5 py-0.5 text-3xs text-muted-foreground"
+                          >
                             #{t}
                           </span>
                         ))}
@@ -902,7 +968,11 @@ export const HomePage: React.FC<HomePageProps> = ({
                       >
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-foreground">
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              className="text-muted-foreground hover:text-foreground"
+                            >
                               <MoreVertical className="size-3.5" />
                             </Button>
                           </DropdownMenuTrigger>

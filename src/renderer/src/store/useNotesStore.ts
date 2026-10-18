@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { confirmDialog } from '../components/ui/confirm'
 import { toast } from '../components/ui/toast'
 import type { BacklinkItem, Note, NoteTreeNode } from '../types/notes'
+
 export type { BacklinkItem, Note, NoteTreeNode }
 
 export function getAncestors(

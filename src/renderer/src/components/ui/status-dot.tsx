@@ -9,13 +9,7 @@ interface StatusDotProps {
   className?: string
 }
 
-export const StatusDot: React.FC<StatusDotProps> = ({
-  status,
-  tone,
-  pulse,
-  label,
-  className
-}) => {
+export const StatusDot: React.FC<StatusDotProps> = ({ status, tone, pulse, label, className }) => {
   const isSaving = status === 'saving' || tone === 'running' || pulse
   const isError = status === 'error' || tone === 'error'
 

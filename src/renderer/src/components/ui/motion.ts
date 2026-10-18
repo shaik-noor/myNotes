@@ -57,4 +57,3 @@ export function springTransition(stiffness = 300, damping = 20): Transition {
     ? { duration: 0 }
     : { type: 'spring', stiffness, damping, mass: 0.5 }
 }
-

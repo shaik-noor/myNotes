@@ -1,14 +1,14 @@
-import { DEFAULT_CHAT_MODEL, type Note } from '../../types/notes'
-import { confirmDialog } from '../ui/confirm'
-import { duration, ease, prefersReducedMotion } from '../ui/motion'
-import { toast } from '../ui/toast'
-import { cn } from '../ui/utils'
 import { type Editor, useEditorState } from '@tiptap/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Briefcase } from 'lucide-react'
 import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getAncestors, useNotesStore } from '../../store/useNotesStore'
+import { DEFAULT_CHAT_MODEL, type Note } from '../../types/notes'
+import { confirmDialog } from '../ui/confirm'
+import { duration, ease, prefersReducedMotion } from '../ui/motion'
+import { toast } from '../ui/toast'
+import { cn } from '../ui/utils'
 import { AiInlineToolbar } from './ai/AiInlineToolbar'
 import { useAiInline } from './ai/useAiInline'
 import { BacklinksPanel } from './backlinks/BacklinksPanel'
@@ -22,10 +22,10 @@ import { NotesEditor } from './editor/NotesEditor'
 import { NoteTagsBar } from './editor/NoteTagsBar'
 import { OPEN_FIND_REPLACE_EVENT } from './editor/searchHighlight'
 import { TitleInput } from './editor/TitleInput'
+import { HomePage } from './home/HomePage'
 import { NoteAttachmentsPanel } from './NoteAttachmentsPanel'
 import { NotePeekPanel } from './peek/NotePeekPanel'
 import { useNoteCreation } from './sidebar/NotesSidebarPanel'
-import { HomePage } from './home/HomePage'
 
 function toMarkdownDocument(title: string, content: string): string {
   const startsWithH1 = /^\s*#\s/.test(content)
@@ -414,5 +414,3 @@ export const NotesView: React.FC = () => {
     </div>
   )
 }
-
-

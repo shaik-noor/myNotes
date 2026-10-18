@@ -26,7 +26,9 @@ function inlineText(content: Fragment): string {
 }
 
 function cellText(cell: PMNode): string {
-  return inlineText(cell.content).replace(/\r?\n+/g, ' ').trim()
+  return inlineText(cell.content)
+    .replace(/\r?\n+/g, ' ')
+    .trim()
 }
 
 function blockLines(node: PMNode): string[] {
@@ -103,4 +105,3 @@ function listLines(list: PMNode): string[] {
   })
   return out
 }
-

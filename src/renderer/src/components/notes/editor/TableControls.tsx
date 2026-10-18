@@ -54,7 +54,8 @@ export const TableControls: React.FC<{ editor: Editor }> = ({ editor }) => (
   </ContextMenuContent>
 )
 
-const SECTION_LABEL = 'pb-0.5 pt-1 text-2xs font-bold uppercase tracking-wider text-muted-foreground/60'
+const SECTION_LABEL =
+  'pb-0.5 pt-1 text-2xs font-bold uppercase tracking-wider text-muted-foreground/60'
 const ICON = 'text-muted-foreground'
 
 const ALIGNS: { value: ColumnAlign; label: string; Icon: typeof TextAlignStart }[] = [

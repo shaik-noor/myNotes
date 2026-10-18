@@ -1,3 +1,8 @@
+import { Check, ChevronRight, Copy, MoreVertical, Pin, PinOff, Plus, Trash2 } from 'lucide-react'
+import type React from 'react'
+import { useState } from 'react'
+import type { NoteTreeNode } from '../../../store/useNotesStore'
+import { confirmDialog } from '../../ui/confirm'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,12 +11,7 @@ import {
   DropdownMenuTrigger
 } from '../../ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
-import { confirmDialog } from '../../ui/confirm'
 import { cn } from '../../ui/utils'
-import { Check, ChevronRight, Copy, MoreVertical, Pin, PinOff, Plus, Trash2 } from 'lucide-react'
-import type React from 'react'
-import { useState } from 'react'
-import type { NoteTreeNode } from '../../../store/useNotesStore'
 import { NoteGlyph } from '../noteIcon'
 
 interface NoteTreeRowProps {
@@ -335,4 +335,3 @@ export const NoteTreeRow: React.FC<NoteTreeRowProps> = ({
     </div>
   )
 }
-

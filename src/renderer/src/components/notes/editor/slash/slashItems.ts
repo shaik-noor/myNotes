@@ -1,4 +1,3 @@
-import { toast } from '../../../ui/toast'
 import type { Editor, Range } from '@tiptap/react'
 import {
   CheckSquare,
@@ -18,6 +17,7 @@ import {
   Type
 } from 'lucide-react'
 import { NoteAttachmentsService } from '../../../../services/noteAttachments'
+import { toast } from '../../../ui/toast'
 import { emitNoteAttachmentsChanged } from '../attachmentEvents'
 import { insertAttachmentWithEditor } from '../attachmentInsert'
 
@@ -194,4 +194,3 @@ export function filterSlashItems(items: SlashCommandItem[], query: string): Slas
       (item.keywords ?? []).some((k) => k.toLowerCase().includes(q))
   )
 }
-
