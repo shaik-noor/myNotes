@@ -1,0 +1,93 @@
+[
+  {
+    "version": "10.5.11",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_10511_server_linux-x64.tar",
+    "mirrorFile": "informatica_10511_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_10511_server_winem-64t.zip",
+    "winMirrorFile": "informatica_10511_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.10",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_10510_server_linux-x64.tar",
+    "mirrorFile": "informatica_10510_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_10510_server_winem-64t.zip",
+    "winMirrorFile": "informatica_10510_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.9",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1059_server_linux-x64.tar",
+    "mirrorFile": "informatica_1059_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1059_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1059_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.8",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1058_server_linux-x64.tar",
+    "mirrorFile": "informatica_1058_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1058_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1058_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.7",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1057_server_linux-x64.tar",
+    "mirrorFile": "informatica_1057_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1057_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1057_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.6",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1056_server_linux-x64.tar",
+    "mirrorFile": "informatica_1056_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1056_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1056_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.5",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1055_server_linux-x64.tar",
+    "mirrorFile": "informatica_1055_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1055_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1055_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.4",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1054_server_linux-x64.tar",
+    "mirrorFile": "informatica_1054_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1054_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1054_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.3",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1053_server_linux-x64.tar",
+    "mirrorFile": "informatica_1053_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1053_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1053_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.2",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1052_server_linux-x64.tar",
+    "mirrorFile": "informatica_1052_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1052_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1052_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.1",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1051_server_linux-x64.tar",
+    "mirrorFile": "informatica_1051_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1051_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1051_server_winem-64t.zip"
+  },
+  {
+    "version": "10.5.0",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1050_server_linux-x64.tar",
+    "mirrorFile": "informatica_1050_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1050_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1050_server_winem-64t.zip"
+  },
+  {
+    "version": "10.4.1",
+    "url": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1041_server_linux-x64.tar",
+    "mirrorFile": "informatica_1041_server_linux-x64.tar",
+    "winUrl": "https://download.informatica.com/0155790/downloads/Informatica10/informatica_1041_server_winem-64t.zip",
+    "winMirrorFile": "informatica_1041_server_winem-64t.zip"
+  }
+]

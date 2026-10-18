@@ -1,0 +1,28 @@
+appId: com.mynotes.app
+productName: myNotes
+directories:
+  buildResources: build
+files:
+  - 'out/**/*'
+  - 'resources/**/*'
+  - '!**/*.map'
+asarUnpack:
+  - 'resources/**'
+mac:
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: false
+  category: public.app-category.productivity
+dmg:
+  artifactName: ${name}-${version}.${ext}
+win:
+  executableName: myNotes
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility

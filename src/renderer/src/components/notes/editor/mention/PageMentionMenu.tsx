@@ -1,0 +1,106 @@
+import { FileText } from 'lucide-react'
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState
+} from 'react'
+import type { PageSuggestion } from './pageMention'
+
+export interface PageMentionProps {
+  items: PageSuggestion[]
+  command: (item: PageSuggestion) => void
+}
+
+/** Imperative handle the suggestion plugin uses to forward keyboard events. */
+export interface PageMentionHandle {
+  onKeyDown: (props: { event: KeyboardEvent }) => boolean
+}
+
+/**
+ * The keyboard-navigable page list rendered inside the `@`-mention popup.
+ */
+export const PageMentionMenu = forwardRef<PageMentionHandle, PageMentionProps>(
+  function PageMentionMenu({ items, command }, ref) {
+    const [selectedIndex, setSelectedIndex] = useState(0)
+    const containerRef = useRef<HTMLDivElement>(null)
+    const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+    useEffect(() => setSelectedIndex(0), [items])
+
+    useLayoutEffect(() => {
+      itemRefs.current[selectedIndex]?.scrollIntoView({ block: 'nearest' })
+    }, [selectedIndex])
+
+    const select = (index: number): void => {
+      const item = items[index]
+      if (item) command(item)
+    }
+
+    useImperativeHandle(ref, () => ({
+      onKeyDown: ({ event }) => {
+        if (items.length === 0) return false
+        if (event.key === 'ArrowUp') {
+          setSelectedIndex((i) => (i + items.length - 1) % items.length)
+          return true
+        }
+        if (event.key === 'ArrowDown') {
+          setSelectedIndex((i) => (i + 1) % items.length)
+          return true
+        }
+        if (event.key === 'Enter' || event.key === 'Tab') {
+          select(selectedIndex)
+          return true
+        }
+        return false
+      }
+    }))
+
+    if (items.length === 0) {
+      return (
+        <div className="z-50 relative w-64 rounded-lg bg-popover p-3 text-2xs text-muted-foreground shadow-2xl ring-1 ring-foreground/10 border border-border/80 backdrop-blur-2xl">
+          No matching pages
+        </div>
+      )
+    }
+
+    return (
+      <div
+        ref={containerRef}
+        className="z-50 relative max-h-80 w-72 overflow-y-auto rounded-lg bg-popover p-1.5 text-popover-foreground shadow-2xl ring-1 ring-foreground/10 border border-border/80 backdrop-blur-2xl"
+      >
+        {items.map((item, index) => {
+          const isActive = index === selectedIndex
+          return (
+            <button
+              type="button"
+              key={item.id}
+              ref={(el) => {
+                itemRefs.current[index] = el
+              }}
+              onMouseEnter={() => setSelectedIndex(index)}
+              onClick={() => select(index)}
+              className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors cursor-pointer ${
+                isActive ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent/60'
+              }`}
+            >
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/50 text-muted-foreground">
+                {item.icon ? (
+                  <span className="text-base">{item.icon}</span>
+                ) : (
+                  <FileText className="size-4" />
+                )}
+              </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-xs font-medium">{item.title}</span>
+                <span className="truncate text-2xs text-muted-foreground">Link to page</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+)
