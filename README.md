@@ -58,3 +58,4 @@ npm run build
 # Package standalone macOS / Windows / Linux application
 npm run package
 ```
+

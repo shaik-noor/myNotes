@@ -170,3 +170,4 @@ export function resolveCoverImage(coverImage: string | undefined): string | unde
   }
   return coverImage
 }
+

@@ -17,3 +17,4 @@ export const BrandWatermark: React.FC<BrandWatermarkProps> = ({ text, className 
     </span>
   </div>
 )
+

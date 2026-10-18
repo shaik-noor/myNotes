@@ -73,3 +73,4 @@ export function useResizablePanel({
 
   return { width, isDragging, onHandleMouseDown }
 }
+

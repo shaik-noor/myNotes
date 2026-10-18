@@ -31,3 +31,4 @@ export function fileGlyph(ext?: string): LucideIcon {
   if (['txt', 'md', 'markdown', 'log'].includes(e)) return FileText
   return File
 }
+

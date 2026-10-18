@@ -235,3 +235,4 @@ export const FindReplaceBar: React.FC<FindReplaceBarProps> = ({ editor }) => {
     </AnimatePresence>
   )
 }
+

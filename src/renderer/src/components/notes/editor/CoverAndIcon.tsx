@@ -292,3 +292,4 @@ export const CoverAndIcon: React.FC<CoverAndIconProps> = ({ note, onUpdate }) =>
     </div>
   )
 }
+

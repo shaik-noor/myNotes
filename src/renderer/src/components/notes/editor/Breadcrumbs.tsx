@@ -47,3 +47,4 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
     </nav>
   )
 }
+

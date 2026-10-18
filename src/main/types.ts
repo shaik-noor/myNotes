@@ -82,3 +82,4 @@ export interface BackupManifest {
   noteAttachments: Record<string, NoteAttachmentRow[]>
   settings?: AppSettings
 }
+

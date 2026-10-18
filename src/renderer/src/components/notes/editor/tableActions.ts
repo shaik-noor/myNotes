@@ -333,3 +333,4 @@ export function getTableMenuState(editor: Editor): TableMenuState {
     align: currentColumnAlign(state)
   }
 }
+

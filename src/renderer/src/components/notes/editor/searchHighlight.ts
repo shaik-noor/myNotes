@@ -245,3 +245,4 @@ export function getSearchState(editor: Editor): {
     caseSensitive: s.caseSensitive
   }
 }
+

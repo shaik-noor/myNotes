@@ -194,3 +194,4 @@ export function filterSlashItems(items: SlashCommandItem[], query: string): Slas
       (item.keywords ?? []).some((k) => k.toLowerCase().includes(q))
   )
 }
+

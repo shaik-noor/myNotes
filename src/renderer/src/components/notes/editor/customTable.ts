@@ -117,3 +117,4 @@ export const CustomTable = Table.extend({
     }
   }
 })
+

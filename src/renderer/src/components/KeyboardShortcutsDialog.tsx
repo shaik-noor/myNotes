@@ -92,3 +92,4 @@ export const KeyboardShortcutsDialog: React.FC<KeyboardShortcutsDialogProps> = (
     </Dialog>
   )
 }
+

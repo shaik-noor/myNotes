@@ -77,3 +77,4 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
     ]
   }
 })
+

@@ -111,3 +111,4 @@ export const PageMention = Extension.create({
     ]
   }
 })
+

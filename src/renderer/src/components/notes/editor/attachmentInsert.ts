@@ -41,3 +41,4 @@ export function insertAttachmentIntoView(view: EditorView, att: NoteAttachment):
   const textNode = schema.text(att.name, linkMark ? [linkMark.create({ href })] : [])
   view.dispatch(tr.replaceSelectionWith(textNode).scrollIntoView())
 }
+

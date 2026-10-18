@@ -505,3 +505,4 @@ function NotesEmptyState({
     </div>
   )
 }
+

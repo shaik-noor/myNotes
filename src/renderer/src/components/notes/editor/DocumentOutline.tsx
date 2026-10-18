@@ -91,3 +91,4 @@ export const DocumentOutline: React.FC<DocumentOutlineProps> = ({ editor, onClos
     </nav>
   )
 }
+

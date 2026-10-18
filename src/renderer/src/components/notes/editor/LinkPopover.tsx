@@ -130,3 +130,4 @@ export const LinkPopover: React.FC<LinkPopoverProps> = ({ editor }) => {
     </Popover>
   )
 }
+

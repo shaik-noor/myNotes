@@ -61,3 +61,4 @@ export function normalizeLegacyNotes<T extends { content: string }>(
   if (changed) disposeHtmlConverter()
   return { notes: out, changed }
 }
+

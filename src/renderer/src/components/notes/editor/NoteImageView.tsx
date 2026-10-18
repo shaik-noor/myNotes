@@ -54,3 +54,4 @@ export const NoteImageView: React.FC<NodeViewProps> = ({ node, selected }) => {
     </NodeViewWrapper>
   )
 }
+

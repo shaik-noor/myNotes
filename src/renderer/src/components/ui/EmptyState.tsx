@@ -52,3 +52,4 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     </motion.div>
   )
 }
+
