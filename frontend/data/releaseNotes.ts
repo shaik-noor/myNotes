@@ -10,9 +10,30 @@ export interface ReleaseItem {
   }[]
 }
 
-export const APP_VERSION = '1.0.1'
+export const APP_VERSION = '1.0.2'
 
 export const RELEASE_HISTORY: ReleaseItem[] = [
+  {
+    version: '1.0.2',
+    date: 'October 2026',
+    title: 'Simpler Google Drive Sign-In',
+    highlights: [
+      {
+        category: 'cloud',
+        badge: 'Zero Setup',
+        title: 'Just Sign In with Google',
+        description:
+          'Google Drive sync no longer shows OAuth client ID, secret, or relay settings. Sign-in always goes through the secure myNotes relay, and old saved credentials are removed from your device.'
+      },
+      {
+        category: 'fixes',
+        badge: 'Reconnect',
+        title: 'Clear Prompt When Access Expires',
+        description:
+          'If Google access is revoked or expires, myNotes now signs you out cleanly and asks you to sign in again instead of failing every sync.'
+      }
+    ]
+  },
   {
     version: '1.0.1',
     date: 'October 2026',

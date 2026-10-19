@@ -127,8 +127,17 @@ const readJson = async <T>(c: AppContext): Promise<T | null> => {
   }
 }
 
-// Health check
-app.get('/', (c) =>
+// The myNotes home page, privacy policy and terms live on the verified main site (linked from the Google consent screen)
+const SITE_PAGES: Record<string, string> = {
+  '/': 'https://www.noruj.com/mynotes',
+  '/privacy': 'https://www.noruj.com/mynotes/privacy',
+  '/terms': 'https://www.noruj.com/mynotes/terms'
+}
+for (const [path, target] of Object.entries(SITE_PAGES)) {
+  app.get(path, (c) => c.redirect(target, 301))
+}
+
+app.get('/health', (c) =>
   c.json({
     service: 'myNotes Google OAuth Relay',
     status: 'healthy',

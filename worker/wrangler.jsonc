@@ -4,12 +4,15 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-18",
   "compatibility_flags": ["nodejs_compat"],
-  "workers_dev": true,
+  // Served only on auth.noruj.com (Cloudflare creates the DNS record + certificate):
+  // noruj.com is verified with Google, which the OAuth consent screen requires
+  "workers_dev": false,
+  "routes": [{ "pattern": "auth.noruj.com", "custom_domain": true }],
   // Don't expose per-version preview URLs of the auth relay
   "preview_urls": false,
   // Pins the OAuth redirect URI (<APP_URL>/callback) so it can't be influenced by the request Host
   "vars": {
-    "APP_URL": "https://mynotes-auth.mail-noru-in.workers.dev"
+    "APP_URL": "https://auth.noruj.com"
   },
   "observability": {
     "enabled": true

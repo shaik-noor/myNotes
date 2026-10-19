@@ -11,31 +11,13 @@ use tauri_plugin_opener::OpenerExt;
 use crate::db::Database;
 use crate::types::{BackupManifest, CloudSyncConfig, CloudSyncResult};
 
-const OAUTH_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
-const OAUTH_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
-const USERINFO_URL: &str = "https://www.googleapis.com/oauth2/v3/userinfo";
 const DRIVE_FILES_URL: &str = "https://www.googleapis.com/drive/v3/files";
 const DRIVE_UPLOAD_URL: &str = "https://www.googleapis.com/upload/drive/v3/files";
 const VAULT_FILENAME: &str = "mynotes_vault.json";
-const SCOPES: &str = "https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
 
 pub struct CloudSyncManager {
     db: Arc<Database>,
     is_syncing: AtomicBool,
-}
-
-#[derive(Deserialize)]
-struct TokenResponse {
-    access_token: String,
-    refresh_token: Option<String>,
-    expires_in: Option<u64>,
-}
-
-#[derive(Deserialize)]
-struct UserInfoResponse {
-    email: Option<String>,
-    name: Option<String>,
-    picture: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -48,12 +30,13 @@ struct DriveFileItem {
     id: String,
 }
 
-const COMPILE_TIME_CLIENT_ID: Option<&str> = option_env!("BUILTIN_GOOGLE_CLIENT_ID");
-const COMPILE_TIME_CLIENT_SECRET: Option<&str> = option_env!("BUILTIN_GOOGLE_CLIENT_SECRET");
+/// Auth relay (worker/) baked in at build time from AUTH_SERVER_URL. The Google client
+/// ID/secret live only in the relay, never in the app.
 const COMPILE_TIME_AUTH_SERVER_URL: Option<&str> = option_env!("BUILTIN_AUTH_SERVER_URL");
 
-fn get_runtime_env_or_dotenv(key: &str) -> Option<String> {
-    // 1. Process environment variable
+/// Dev builds only: read a value from the process env or a nearby .env file
+#[cfg(debug_assertions)]
+fn dev_env_value(key: &str) -> Option<String> {
     if let Ok(v) = std::env::var(key) {
         let trimmed = v.trim().to_string();
         if !trimmed.is_empty() {
@@ -61,38 +44,27 @@ fn get_runtime_env_or_dotenv(key: &str) -> Option<String> {
         }
     }
 
-    // 2. Search for .env in current and parent directories (dev builds only, so a stray
-    //    .env next to a release binary can't redirect auth)
-    #[cfg(debug_assertions)]
-    if let Ok(cwd) = std::env::current_dir() {
-        let candidates = [
-            cwd.join(".env"),
-            cwd.join("..").join(".env"),
-            cwd.join("src-tauri").join(".env"),
-        ];
-        for path in &candidates {
-            if let Ok(contents) = std::fs::read_to_string(path) {
-                for line in contents.lines() {
-                    let trimmed = line.trim();
-                    if trimmed.is_empty() || trimmed.starts_with('#') {
-                        continue;
-                    }
-                    let trimmed = trimmed.strip_prefix("export ").unwrap_or(trimmed).trim();
-                    if let Some((k, v)) = trimmed.split_once('=') {
-                        if k.trim() == key {
-                            let mut val = v.trim();
-                            if (val.starts_with('"') && val.ends_with('"'))
-                                || (val.starts_with('\'') && val.ends_with('\''))
-                            {
-                                if val.len() >= 2 {
-                                    val = &val[1..val.len() - 1];
-                                }
-                            }
-                            let cleaned = val.trim().to_string();
-                            if !cleaned.is_empty() {
-                                return Some(cleaned);
-                            }
-                        }
+    let cwd = std::env::current_dir().ok()?;
+    let candidates = [
+        cwd.join(".env"),
+        cwd.join("..").join(".env"),
+        cwd.join("src-tauri").join(".env"),
+    ];
+    for path in &candidates {
+        let Ok(contents) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        for line in contents.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+            let trimmed = trimmed.strip_prefix("export ").unwrap_or(trimmed).trim();
+            if let Some((k, v)) = trimmed.split_once('=') {
+                if k.trim() == key {
+                    let val = v.trim().trim_matches('"').trim_matches('\'').trim();
+                    if !val.is_empty() {
+                        return Some(val.to_string());
                     }
                 }
             }
@@ -120,20 +92,8 @@ const TOKEN_KEYS: [&str; 7] = [
     "userPicture",
 ];
 
-/// Only https relays are accepted (plain http just for loopback in dev builds)
-fn validate_auth_server_url(raw: &str) -> Result<String, String> {
-    let trimmed = raw.trim().trim_end_matches('/');
-    let parsed = url::Url::parse(trimmed).map_err(|_| "Auth server URL is not a valid URL".to_string())?;
-    let is_loopback = matches!(parsed.host_str(), Some("127.0.0.1") | Some("localhost"));
-    let scheme_ok = parsed.scheme() == "https" || (cfg!(debug_assertions) && parsed.scheme() == "http" && is_loopback);
-    if !scheme_ok || parsed.host_str().is_none() || !parsed.username().is_empty() || parsed.password().is_some() {
-        return Err("Auth server URL must be an https:// URL".to_string());
-    }
-    if parsed.query().is_some() || parsed.fragment().is_some() {
-        return Err("Auth server URL must not contain a query or fragment".to_string());
-    }
-    Ok(trimmed.to_string())
-}
+/// Settings from older versions that let users enter their own OAuth credentials
+const LEGACY_CREDENTIAL_KEYS: [&str; 3] = ["clientId", "clientSecret", "authServerUrl"];
 
 fn escape_html(s: &str) -> String {
     s.replace('&', "&amp;")
@@ -183,50 +143,12 @@ fn exchange_code_via_relay(
     }
 }
 
-fn exchange_code_direct(
-    client: &reqwest::blocking::Client,
-    manager: &CloudSyncManager,
-    code: &str,
-    code_verifier: &str,
-    redirect_uri: &str,
-) -> Result<LoginTokens, String> {
-    let mut params = std::collections::HashMap::new();
-    params.insert("client_id", manager.get_client_id());
-    let client_secret = manager.get_client_secret();
-    if !client_secret.is_empty() {
-        params.insert("client_secret", client_secret);
-    }
-    params.insert("code", code.to_string());
-    params.insert("code_verifier", code_verifier.to_string());
-    params.insert("grant_type", "authorization_code".to_string());
-    params.insert("redirect_uri", redirect_uri.to_string());
-
-    let tok = client
-        .post(OAUTH_TOKEN_URL)
-        .form(&params)
-        .send()
-        .and_then(|r| r.json::<TokenResponse>())
-        .map_err(|e| e.to_string())?;
-
-    let info = client
-        .get(USERINFO_URL)
-        .header("Authorization", format!("Bearer {}", tok.access_token))
-        .send()
-        .and_then(|r| r.json::<UserInfoResponse>())
-        .ok();
-
-    Ok(LoginTokens {
-        access_token: tok.access_token,
-        refresh_token: tok.refresh_token,
-        expires_in: tok.expires_in,
-        email: info.as_ref().and_then(|i| i.email.clone()),
-        name: info.as_ref().and_then(|i| i.name.clone()),
-        picture: info.and_then(|i| i.picture),
-    })
-}
-
 impl CloudSyncManager {
     pub fn new(db: Arc<Database>) -> Self {
+        // Older versions could store user-entered OAuth credentials (including a client secret) in plaintext
+        for key in LEGACY_CREDENTIAL_KEYS {
+            let _ = db.set_cloud_sync_value(key, None);
+        }
         Self {
             db,
             is_syncing: AtomicBool::new(false),
@@ -234,133 +156,25 @@ impl CloudSyncManager {
     }
 
     pub fn get_auth_server_url(&self) -> String {
-        // 1. Custom DB override
-        if let Some(url) = self.db.get_cloud_sync_value("authServerUrl").ok().flatten() {
-            let trimmed = url.trim().trim_end_matches('/').to_string();
-            if !trimmed.is_empty() {
-                return trimmed;
-            }
+        #[cfg(debug_assertions)]
+        if let Some(url) = dev_env_value("AUTH_SERVER_URL") {
+            return url.trim_end_matches('/').to_string();
         }
 
-        // A user-supplied Client ID (without a custom relay) means direct Google OAuth
-        if self.has_custom_client_id() {
-            return String::new();
-        }
-
-        // 2. Runtime environment variable or .env file
-        if let Some(url) = get_runtime_env_or_dotenv("AUTH_SERVER_URL") {
-            let trimmed = url.trim().trim_end_matches('/').to_string();
-            if !trimmed.is_empty() {
-                return trimmed;
-            }
-        }
-
-        // 3. Compile-time embedded from .env or build environment
-        if let Some(url) = COMPILE_TIME_AUTH_SERVER_URL {
-            let trimmed = url.trim().trim_end_matches('/').to_string();
-            if !trimmed.is_empty() {
-                return trimmed;
-            }
-        }
-
-        String::new()
-    }
-
-    pub fn get_client_id(&self) -> String {
-        // 1. Custom DB override
-        if let Some(id) = self.db.get_cloud_sync_value("clientId").ok().flatten() {
-            let trimmed = id.trim().to_string();
-            if !trimmed.is_empty() {
-                return trimmed;
-            }
-        }
-
-        // 2. Runtime environment variable or .env file
-        if let Some(id) = get_runtime_env_or_dotenv("GOOGLE_CLIENT_ID") {
-            return id;
-        }
-
-        // 3. Compile-time embedded from .env or build environment
-        if let Some(id) = COMPILE_TIME_CLIENT_ID {
-            let trimmed = id.trim().to_string();
-            if !trimmed.is_empty() {
-                return trimmed;
-            }
-        }
-
-        String::new()
-    }
-
-    pub fn get_client_secret(&self) -> String {
-        // 1. Custom DB override
-        if let Some(sec) = self.db.get_cloud_sync_value("clientSecret").ok().flatten() {
-            let trimmed = sec.trim().to_string();
-            if !trimmed.is_empty() {
-                return trimmed;
-            }
-        }
-
-        // 2. Runtime environment variable or .env file
-        if let Some(sec) = get_runtime_env_or_dotenv("GOOGLE_CLIENT_SECRET") {
-            return sec;
-        }
-
-        // 3. Compile-time embedded from .env or build environment
-        if let Some(sec) = COMPILE_TIME_CLIENT_SECRET {
-            let trimmed = sec.trim().to_string();
-            if !trimmed.is_empty() {
-                return trimmed;
-            }
-        }
-
-        String::new()
-    }
-
-    fn has_custom_client_id(&self) -> bool {
-        self.db
-            .get_cloud_sync_value("clientId")
-            .ok()
-            .flatten()
-            .map(|v| !v.trim().is_empty())
-            .unwrap_or(false)
+        COMPILE_TIME_AUTH_SERVER_URL
+            .map(|url| url.trim().trim_end_matches('/').to_string())
+            .unwrap_or_default()
     }
 
     /// Identifies who issued the stored tokens; refresh tokens are only ever sent back to their issuer
     fn token_issuer(&self) -> String {
-        let auth_server_url = self.get_auth_server_url();
-        if auth_server_url.is_empty() {
-            format!("google:{}", self.get_client_id())
-        } else {
-            format!("relay:{}", auth_server_url)
-        }
+        format!("relay:{}", self.get_auth_server_url())
     }
 
     fn clear_tokens(&self) -> Result<(), String> {
         for key in TOKEN_KEYS {
             self.db.set_cloud_sync_value(key, None)?;
         }
-        Ok(())
-    }
-
-    pub fn has_custom_credentials(&self) -> bool {
-        let has_custom_id = self.has_custom_client_id();
-
-        let has_custom_server = self
-            .db
-            .get_cloud_sync_value("authServerUrl")
-            .ok()
-            .flatten()
-            .map(|v| !v.trim().is_empty())
-            .unwrap_or(false);
-
-        has_custom_id || has_custom_server
-    }
-
-    pub fn reset_credentials(&self) -> Result<(), String> {
-        self.clear_tokens()?;
-        self.db.set_cloud_sync_value("clientId", None)?;
-        self.db.set_cloud_sync_value("clientSecret", None)?;
-        self.db.set_cloud_sync_value("authServerUrl", None)?;
         Ok(())
     }
 
@@ -373,29 +187,13 @@ impl CloudSyncManager {
     }
 
     pub fn is_ready(&self) -> bool {
-        !self.get_auth_server_url().is_empty() || !self.get_client_id().is_empty()
+        !self.get_auth_server_url().is_empty()
     }
 
     pub fn get_config(&self) -> CloudSyncConfig {
-        let client_id = self.get_client_id();
-        let client_secret = self.get_client_secret();
-        let auth_server_url = self.get_auth_server_url();
         let auto_sync_val = self.db.get_cloud_sync_value("autoSync").ok().flatten();
-        let is_ready = self.is_ready();
-        let has_custom_creds = self.has_custom_credentials();
-        let has_auth_server = !auth_server_url.is_empty();
 
         CloudSyncConfig {
-            client_id: if client_id.is_empty() {
-                None
-            } else {
-                Some(format!("{}...", client_id.chars().take(12).collect::<String>()))
-            },
-            client_secret: if client_secret.is_empty() {
-                None
-            } else {
-                Some("••••••••".to_string())
-            },
             user_email: self.db.get_cloud_sync_value("userEmail").ok().flatten(),
             user_name: self.db.get_cloud_sync_value("userName").ok().flatten(),
             user_picture: self.db.get_cloud_sync_value("userPicture").ok().flatten(),
@@ -405,56 +203,8 @@ impl CloudSyncManager {
             is_syncing: self.is_syncing.load(Ordering::SeqCst),
             last_error: self.db.get_cloud_sync_value("lastError").ok().flatten(),
             file_id: self.db.get_cloud_sync_value("fileId").ok().flatten(),
-            is_ready,
-            has_custom_creds,
-            auth_server_url: if auth_server_url.is_empty() {
-                None
-            } else {
-                Some(auth_server_url)
-            },
-            has_auth_server,
+            is_ready: self.is_ready(),
         }
-    }
-
-    pub fn save_credentials(
-        &self,
-        client_id: Option<&str>,
-        client_secret: Option<&str>,
-        auth_server_url: Option<&str>,
-    ) -> Result<(), String> {
-        let validated_url = match auth_server_url.map(str::trim) {
-            Some(url) if !url.is_empty() => Some(Some(validate_auth_server_url(url)?)),
-            Some(_) => Some(None),
-            None => None,
-        };
-
-        let issuer_before = self.token_issuer();
-
-        if let Some(url) = validated_url {
-            self.db.set_cloud_sync_value("authServerUrl", url.as_deref())?;
-        }
-        if let Some(id) = client_id {
-            let trimmed = id.trim();
-            if trimmed.is_empty() {
-                self.db.set_cloud_sync_value("clientId", None)?;
-            } else {
-                self.db.set_cloud_sync_value("clientId", Some(trimmed))?;
-            }
-        }
-        if let Some(secret) = client_secret {
-            let trimmed_sec = secret.trim();
-            if trimmed_sec.is_empty() {
-                self.db.set_cloud_sync_value("clientSecret", None)?;
-            } else {
-                self.db.set_cloud_sync_value("clientSecret", Some(trimmed_sec))?;
-            }
-        }
-
-        // Tokens are bound to the relay/client that issued them
-        if self.token_issuer() != issuer_before {
-            self.clear_tokens()?;
-        }
-        Ok(())
     }
 
     pub fn set_auto_sync(&self, enabled: bool) -> Result<(), String> {
@@ -462,28 +212,13 @@ impl CloudSyncManager {
     }
 
     pub fn logout(&self) -> Result<(), String> {
-        let custom_id = self.db.get_cloud_sync_value("clientId").ok().flatten();
-        let custom_secret = self.db.get_cloud_sync_value("clientSecret").ok().flatten();
-        let custom_server = self.db.get_cloud_sync_value("authServerUrl").ok().flatten();
-        self.db.clear_cloud_sync()?;
-        if let Some(id) = custom_id {
-            let _ = self.db.set_cloud_sync_value("clientId", Some(&id));
-        }
-        if let Some(secret) = custom_secret {
-            let _ = self.db.set_cloud_sync_value("clientSecret", Some(&secret));
-        }
-        if let Some(server) = custom_server {
-            let _ = self.db.set_cloud_sync_value("authServerUrl", Some(&server));
-        }
-        Ok(())
+        self.db.clear_cloud_sync()
     }
 
     pub async fn start_login(self: Arc<Self>, app_handle: AppHandle) -> Result<(String, String), String> {
         let auth_server_url = self.get_auth_server_url();
-        let client_id = self.get_client_id();
-
-        if auth_server_url.is_empty() && client_id.is_empty() {
-            return Err("Google Drive authentication is not configured. Set AUTH_SERVER_URL or GOOGLE_CLIENT_ID in .env or configure in Settings -> Cloud Sync.".to_string());
+        if auth_server_url.is_empty() {
+            return Err("Google Drive sync isn't available in this build of myNotes.".to_string());
         }
 
         let mut verifier_bytes = [0u8; 32];
@@ -501,33 +236,19 @@ impl CloudSyncManager {
         let server = tiny_http::Server::http("127.0.0.1:0")
             .map_err(|e| format!("Failed to start loopback server: {}", e))?;
         let port = server.server_addr().to_ip().map(|a| a.port()).unwrap_or(0);
-        let redirect_uri = format!("http://127.0.0.1:{}/callback", port);
 
-        let auth_url = if !auth_server_url.is_empty() {
-            format!(
-                "{}/auth/login?port={}&state={}&code_challenge={}",
-                auth_server_url,
-                port,
-                urlencoding::encode(&state),
-                urlencoding::encode(&code_challenge)
-            )
-        } else {
-            format!(
-                "{}?client_id={}&redirect_uri={}&response_type=code&scope={}&code_challenge={}&code_challenge_method=S256&state={}&access_type=offline&prompt=consent",
-                OAUTH_AUTH_URL,
-                urlencoding::encode(&client_id),
-                urlencoding::encode(&redirect_uri),
-                urlencoding::encode(SCOPES),
-                urlencoding::encode(&code_challenge),
-                urlencoding::encode(&state)
-            )
-        };
+        let auth_url = format!(
+            "{}/auth/login?port={}&state={}&code_challenge={}",
+            auth_server_url,
+            port,
+            urlencoding::encode(&state),
+            urlencoding::encode(&code_challenge)
+        );
 
         // Open user default browser
         let _ = app_handle.opener().open_url(&auth_url, None::<&str>);
 
         let manager = self.clone();
-        let redirect_uri_clone = redirect_uri.clone();
         let issuer = self.token_issuer();
 
         tokio::task::spawn_blocking(move || {
@@ -597,12 +318,8 @@ impl CloudSyncManager {
                 };
 
                 let client = reqwest::blocking::Client::new();
-                let login_result = if !auth_server_url.is_empty() {
-                    // Relay mode: redeem the PKCE-bound code at the worker, which holds the client secret
-                    exchange_code_via_relay(&client, &auth_server_url, code_val, &code_verifier)
-                } else {
-                    exchange_code_direct(&client, &manager, code_val, &code_verifier, &redirect_uri_clone)
-                };
+                // Redeem the PKCE-bound code at the relay, which holds the client secret
+                let login_result = exchange_code_via_relay(&client, &auth_server_url, code_val, &code_verifier);
 
                 match login_result {
                     Ok(login) => {
@@ -683,75 +400,47 @@ impl CloudSyncManager {
             }
         }
 
-        let client = reqwest::Client::new();
         let auth_server_url = self.get_auth_server_url();
-
-        // 1. Try refreshing via Cloudflare Worker Auth Relay if configured
-        if !auth_server_url.is_empty() {
-            let refresh_url = format!("{}/auth/refresh", auth_server_url);
-            let payload = serde_json::json!({
-                "refreshToken": refresh_token
-            });
-
-            let res = client
-                .post(&refresh_url)
-                .json(&payload)
-                .send()
-                .await
-                .map_err(|e| format!("Auth relay refresh failed: {}", e))?;
-
-            #[derive(Deserialize)]
-            #[serde(rename_all = "camelCase")]
-            struct RelayRefreshResponse {
-                success: bool,
-                access_token: Option<String>,
-                expires_in: Option<u64>,
-                error: Option<String>,
-            }
-
-            let refresh_res = res
-                .json::<RelayRefreshResponse>()
-                .await
-                .map_err(|e| format!("Failed to parse auth relay response: {}", e))?;
-
-            if !refresh_res.success || refresh_res.access_token.is_none() {
-                return Err(refresh_res.error.unwrap_or_else(|| "Token refresh failed on auth relay".to_string()));
-            }
-
-            let new_tok = refresh_res.access_token.unwrap();
-            self.db.set_cloud_sync_value("accessToken", Some(&new_tok))?;
-            let new_expiry = chrono::Utc::now().timestamp() + (refresh_res.expires_in.unwrap_or(3600) as i64);
-            self.db.set_cloud_sync_value("tokenExpiry", Some(&new_expiry.to_string()))?;
-
-            return Ok(new_tok);
+        if auth_server_url.is_empty() {
+            return Err("Google Drive sync isn't available in this build of myNotes.".to_string());
         }
 
-        // 2. Direct refresh fallback using client_id and optional client_secret
-        let mut params = std::collections::HashMap::new();
-        let client_id = self.get_client_id();
-        let client_secret = self.get_client_secret();
-        params.insert("client_id", client_id);
-        if !client_secret.is_empty() {
-            params.insert("client_secret", client_secret);
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct RelayRefreshResponse {
+            success: bool,
+            access_token: Option<String>,
+            expires_in: Option<u64>,
+            error: Option<String>,
         }
-        params.insert("refresh_token", refresh_token);
-        params.insert("grant_type", "refresh_token".to_string());
 
-        let res = client
-            .post(OAUTH_TOKEN_URL)
-            .form(&params)
+        let refresh_res = reqwest::Client::new()
+            .post(format!("{}/auth/refresh", auth_server_url))
+            .json(&serde_json::json!({ "refreshToken": refresh_token }))
             .send()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Auth relay refresh failed: {}", e))?
+            .json::<RelayRefreshResponse>()
+            .await
+            .map_err(|e| format!("Failed to parse auth relay response: {}", e))?;
 
-        let tok = res.json::<TokenResponse>().await.map_err(|e| e.to_string())?;
-        self.db
-            .set_cloud_sync_value("accessToken", Some(&tok.access_token))?;
-        let new_expiry = chrono::Utc::now().timestamp() + (tok.expires_in.unwrap_or(3600) as i64);
-        self.db
-            .set_cloud_sync_value("tokenExpiry", Some(&new_expiry.to_string()))?;
+        let new_tok = match refresh_res.access_token {
+            Some(tok) if refresh_res.success => tok,
+            _ => {
+                // Google revoked the grant (user removed access, or the refresh token expired)
+                if refresh_res.error.as_deref() == Some("invalid_grant") {
+                    self.clear_tokens()?;
+                    return Err("Google Drive access expired or was revoked. Please sign in again.".to_string());
+                }
+                return Err(refresh_res.error.unwrap_or_else(|| "Token refresh failed on auth relay".to_string()));
+            }
+        };
 
-        Ok(tok.access_token)
+        self.db.set_cloud_sync_value("accessToken", Some(&new_tok))?;
+        let new_expiry = chrono::Utc::now().timestamp() + (refresh_res.expires_in.unwrap_or(3600) as i64);
+        self.db.set_cloud_sync_value("tokenExpiry", Some(&new_expiry.to_string()))?;
+
+        Ok(new_tok)
     }
 
     pub async fn sync_now(&self, app_handle: &AppHandle) -> Result<CloudSyncResult, String> {

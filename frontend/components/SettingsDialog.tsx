@@ -2,20 +2,16 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Cloud,
   DatabaseBackup,
   Download,
   Info,
-  Key,
   Laptop,
   Loader2,
   LogOut,
   Moon,
   Palette,
   RefreshCw,
-  RotateCcw,
   ShieldCheck,
   Sparkles,
   Sun,
@@ -114,11 +110,6 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [cloudConfig, setCloudConfig] = useState<CloudSyncConfig | null>(null)
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [showCredsSetup, setShowCredsSetup] = useState(false)
-  const [customClientId, setCustomClientId] = useState('')
-  const [customClientSecret, setCustomClientSecret] = useState('')
-  const [customAuthServerUrl, setCustomAuthServerUrl] = useState('')
-  const [isSavingCreds, setIsSavingCreds] = useState(false)
 
   useEffect(() => {
     if (open && initialTab) {
@@ -217,9 +208,6 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         toast.error('Google Sign-In Failed', {
           description: res?.error || 'Could not complete Google authentication'
         })
-        if (res?.error?.includes('Client ID')) {
-          setShowCredsSetup(true)
-        }
       }
     } catch (e) {
       toast.error('Sign-in error', { description: e instanceof Error ? e.message : String(e) })
@@ -285,75 +273,6 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
       toast.info(enabled ? 'Auto-sync enabled' : 'Auto-sync disabled')
     } catch (e) {
       console.error(e)
-    }
-  }
-
-  const handleSaveCredentials = async (): Promise<void> => {
-    const trimmedAuth = customAuthServerUrl.trim()
-    const trimmedClientId = customClientId.trim()
-    const trimmedSecret = customClientSecret.trim()
-
-    if (!trimmedAuth && !trimmedClientId) {
-      toast.error('Configuration required', {
-        description: 'Please enter either a Cloudflare Auth Relay URL or a Google Client ID.'
-      })
-      return
-    }
-
-    setIsSavingCreds(true)
-    try {
-      const res = await window.api?.cloud?.saveCredentials?.(
-        trimmedClientId || undefined,
-        trimmedSecret || undefined,
-        trimmedAuth || undefined
-      )
-      if (res?.success) {
-        toast.success('Configuration saved', {
-          description: trimmedAuth
-            ? 'Cloudflare Auth Relay configured successfully.'
-            : 'Custom Google OAuth credentials configured successfully.'
-        })
-        const configRes = await window.api?.cloud?.getConfig?.()
-        if (configRes?.success && configRes.data) {
-          setCloudConfig(configRes.data)
-        }
-        setShowCredsSetup(false)
-      } else {
-        toast.error('Failed to save configuration', { description: res?.error })
-      }
-    } catch (e) {
-      toast.error('Error saving credentials', {
-        description: e instanceof Error ? e.message : String(e)
-      })
-    } finally {
-      setIsSavingCreds(false)
-    }
-  }
-
-  const handleResetCredentials = async (): Promise<void> => {
-    setIsSavingCreds(true)
-    try {
-      const res = await window.api?.cloud?.resetCredentials?.()
-      if (res?.success) {
-        toast.success('Reset to default configuration', {
-          description: 'Reverted to built-in configuration.'
-        })
-        setCustomClientId('')
-        setCustomClientSecret('')
-        setCustomAuthServerUrl('')
-        const configRes = await window.api?.cloud?.getConfig?.()
-        if (configRes?.success && configRes.data) {
-          setCloudConfig(configRes.data)
-        }
-      } else {
-        toast.error('Failed to reset credentials', { description: res?.error })
-      }
-    } catch (e) {
-      toast.error('Error resetting credentials', {
-        description: e instanceof Error ? e.message : String(e)
-      })
-    } finally {
-      setIsSavingCreds(false)
     }
   }
 
@@ -594,16 +513,6 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                               <CheckCircle2 className="size-2.5" />
                               Active Vault
                             </span>
-                            {cloudConfig.hasAuthServer && (
-                              <span className="rounded-full bg-blue-500/15 text-blue-400 text-3xs px-2 py-0.5 border border-blue-500/20 font-medium">
-                                Cloudflare Relay
-                              </span>
-                            )}
-                            {cloudConfig.hasCustomCreds && (
-                              <span className="rounded-full bg-notes/20 text-notes text-3xs px-2 py-0.5 font-medium">
-                                Custom Override
-                              </span>
-                            )}
                           </div>
                           <div className="text-2xs text-muted-foreground truncate">
                             {cloudConfig.userEmail}
@@ -696,33 +605,11 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 ) : (
                   /* Disconnected State */
                   <div className="space-y-4">
-                    {/* Developer banner if .env credentials missing */}
                     {!cloudConfig?.isReady && (
                       <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex items-start gap-3 text-xs text-amber-400">
                         <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-500" />
-                        <div>
-                          <div className="font-semibold text-amber-500">
-                            OAuth Configuration Needed for Cloud Sync
-                          </div>
-                          <div className="text-2xs text-muted-foreground mt-0.5">
-                            Developers: Set{' '}
-                            <code className="bg-muted px-1 py-0.5 rounded text-3xs font-mono">
-                              AUTH_SERVER_URL
-                            </code>{' '}
-                            (recommended Cloudflare Worker) or{' '}
-                            <code className="bg-muted px-1 py-0.5 rounded text-3xs font-mono">
-                              GOOGLE_CLIENT_ID
-                            </code>{' '}
-                            in{' '}
-                            <code className="bg-muted px-1 py-0.5 rounded text-3xs font-mono">
-                              .env
-                            </code>{' '}
-                            to give all users 1-click Google Drive sync out of the box (see{' '}
-                            <code className="bg-muted px-1 py-0.5 rounded text-3xs font-mono">
-                              .env.example
-                            </code>
-                            ). You can also configure an Auth Relay URL in Developer Options below.
-                          </div>
+                        <div className="font-semibold text-amber-500">
+                          Google Drive sync isn't available in this build of myNotes.
                         </div>
                       </div>
                     )}
@@ -761,11 +648,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         {cloudConfig?.isReady && (
                           <div className="flex items-center gap-1.5 text-3xs text-emerald-500 font-medium">
                             <CheckCircle2 className="size-3" />
-                            <span>
-                              {cloudConfig?.hasAuthServer
-                                ? '1-click sync ready — secured by Cloudflare Auth Relay'
-                                : '1-click sync ready — configured via .env'}
-                            </span>
+                            <span>Secure 1-click sign-in with your Google account</span>
                           </div>
                         )}
                       </div>
@@ -799,123 +682,6 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                           seamless sync.
                         </div>
                       </div>
-                    </div>
-
-                    {/* Developer / Custom OAuth credentials dropdown */}
-                    <div className="rounded-xl border border-border/40 bg-muted/10 overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => setShowCredsSetup(!showCredsSetup)}
-                        className="w-full flex items-center justify-between p-3 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Key className="size-3.5 text-notes" />
-                          <span>Developer Options (OAuth & Auth Relay)</span>
-                          {cloudConfig?.hasCustomCreds && (
-                            <span className="rounded-full bg-notes/20 text-notes text-3xs px-2 py-0.5">
-                              Custom Override
-                            </span>
-                          )}
-                        </span>
-                        {showCredsSetup ? (
-                          <ChevronDown className="size-4" />
-                        ) : (
-                          <ChevronRight className="size-4" />
-                        )}
-                      </button>
-
-                      {showCredsSetup && (
-                        <div className="p-4 pt-1 border-t border-border/30 space-y-3.5 text-xs">
-                          <p className="text-2xs text-muted-foreground">
-                            Configure how myNotes connects to Google Drive. The recommended and safest approach for distributed open-source builds is a free Cloudflare Worker auth relay, which keeps your Google Client Secret 100% private.
-                          </p>
-
-                          <div className="space-y-3">
-                            <div>
-                              <div className="flex items-center justify-between mb-1">
-                                <label className="text-2xs font-semibold text-foreground">
-                                  Auth Server Relay URL (Cloudflare Worker)
-                                </label>
-                                <span className="text-3xs text-emerald-500 font-medium">
-                                  Recommended • Zero Secrets in Binary
-                                </span>
-                              </div>
-                              <input
-                                type="url"
-                                value={customAuthServerUrl}
-                                onChange={(e) => setCustomAuthServerUrl(e.target.value)}
-                                placeholder={
-                                  cloudConfig?.authServerUrl ||
-                                  'e.g. https://mynotes-auth.<your-subdomain>.workers.dev'
-                                }
-                                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border/60 bg-background text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-notes"
-                              />
-                              <p className="text-3xs text-muted-foreground mt-1">
-                                Deploy the included <code className="font-mono">worker/</code> directory to Cloudflare Workers with free tier.
-                              </p>
-                            </div>
-
-                            <div className="relative flex py-1 items-center">
-                              <div className="flex-grow border-t border-border/30"></div>
-                              <span className="flex-shrink mx-2 text-3xs text-muted-foreground font-medium uppercase tracking-wider">
-                                Or Direct OAuth (Desktop PKCE)
-                              </span>
-                              <div className="flex-grow border-t border-border/30"></div>
-                            </div>
-
-                            <div>
-                              <label className="text-2xs font-semibold text-foreground block mb-1">
-                                Google Client ID
-                              </label>
-                              <input
-                                type="text"
-                                value={customClientId}
-                                onChange={(e) => setCustomClientId(e.target.value)}
-                                placeholder={
-                                  cloudConfig?.clientId ||
-                                  'e.g. 123456789-abcdef.apps.googleusercontent.com'
-                                }
-                                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border/60 bg-background text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-notes"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-2xs font-semibold text-foreground block mb-1">
-                                Google Client Secret (Optional for direct desktop OAuth)
-                              </label>
-                              <input
-                                type="password"
-                                value={customClientSecret}
-                                onChange={(e) => setCustomClientSecret(e.target.value)}
-                                placeholder={cloudConfig?.clientSecret || 'GOCSPX-••••••••'}
-                                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border/60 bg-background text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-notes"
-                              />
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-1">
-                              <Button
-                                onClick={handleSaveCredentials}
-                                disabled={isSavingCreds}
-                                className="h-7 text-2xs font-semibold cursor-pointer bg-notes text-notes-foreground hover:bg-notes/90"
-                              >
-                                {isSavingCreds ? 'Saving…' : 'Save Configuration'}
-                              </Button>
-
-                              {cloudConfig?.hasCustomCreds && (
-                                <Button
-                                  variant="outline"
-                                  onClick={handleResetCredentials}
-                                  disabled={isSavingCreds}
-                                  className="h-7 text-2xs font-semibold cursor-pointer gap-1"
-                                >
-                                  <RotateCcw className="size-3" />
-                                  <span>Reset to .env Built-In</span>
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}

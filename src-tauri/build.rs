@@ -47,44 +47,20 @@ fn main() {
         env_file_vars.extend(parse_env_file(&local_env));
     }
 
-    // Process env takes priority over .env files
-    let client_id = env::var("GOOGLE_CLIENT_ID")
-        .ok()
-        .or_else(|| env_file_vars.get("GOOGLE_CLIENT_ID").cloned())
-        .unwrap_or_default();
-
-    let client_secret = env::var("GOOGLE_CLIENT_SECRET")
-        .ok()
-        .or_else(|| env_file_vars.get("GOOGLE_CLIENT_SECRET").cloned())
-        .unwrap_or_default();
-
+    // Only the auth relay URL is baked in; Google OAuth credentials live in the relay (worker/), never in the app
     let auth_server_url = env::var("AUTH_SERVER_URL")
         .ok()
         .or_else(|| env_file_vars.get("AUTH_SERVER_URL").cloned())
         .unwrap_or_default();
-
-    let trimmed_id = client_id.trim();
-    let trimmed_secret = client_secret.trim();
     let trimmed_auth_url = auth_server_url.trim().trim_end_matches('/');
 
     if !trimmed_auth_url.is_empty() {
-        // Relay mode: the worker holds the Google credentials, so never bake them into the binary
         println!("cargo:rustc-env=BUILTIN_AUTH_SERVER_URL={}", trimmed_auth_url);
-        if !trimmed_secret.is_empty() {
-            println!("cargo:warning=AUTH_SERVER_URL is set; not embedding GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET in the app binary");
-        }
-    } else {
-        if !trimmed_id.is_empty() {
-            println!("cargo:rustc-env=BUILTIN_GOOGLE_CLIENT_ID={}", trimmed_id);
-        }
-        if !trimmed_secret.is_empty() {
-            println!("cargo:rustc-env=BUILTIN_GOOGLE_CLIENT_SECRET={}", trimmed_secret);
-        }
+    } else if env::var("PROFILE").as_deref() == Ok("release") {
+        println!("cargo:warning=AUTH_SERVER_URL is not set: Google Drive sync will be unavailable in this build");
     }
 
     println!("cargo:rerun-if-env-changed=AUTH_SERVER_URL");
-    println!("cargo:rerun-if-env-changed=GOOGLE_CLIENT_ID");
-    println!("cargo:rerun-if-env-changed=GOOGLE_CLIENT_SECRET");
     if let Some(ref p) = parent_env {
         println!("cargo:rerun-if-changed={}", p.display());
     }

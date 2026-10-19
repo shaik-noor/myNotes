@@ -72,8 +72,6 @@ export interface BacklinkItem {
 }
 
 export interface CloudSyncConfig {
-  clientId?: string
-  clientSecret?: string
   userEmail?: string | null
   userName?: string | null
   userPicture?: string | null
@@ -84,9 +82,6 @@ export interface CloudSyncConfig {
   lastError?: string | null
   fileId?: string | null
   isReady?: boolean
-  hasCustomCreds?: boolean
-  authServerUrl?: string | null
-  hasAuthServer?: boolean
 }
 
 export interface CloudSyncResult {

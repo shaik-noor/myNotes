@@ -85,8 +85,6 @@ pub fn run() {
             commands::backup_export,
             commands::backup_import,
             commands::cloud_get_config,
-            commands::cloud_save_credentials,
-            commands::cloud_reset_credentials,
             commands::cloud_set_auto_sync,
             commands::cloud_login,
             commands::cloud_logout,

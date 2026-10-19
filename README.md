@@ -76,11 +76,9 @@ npm run tauri:build
 
 ### Google Drive Cloud Storage & OAuth Configuration
 
-`myNotes` supports seamless **1-click Google Drive connection** for end-users without requiring each user to create their own Google Cloud console project.
+`myNotes` gives end users **1-click Google Drive sync**: they just click **"Sign in with Google"**. Google OAuth goes through the included [Cloudflare Worker auth relay](worker/README.md), which holds the Google client ID and secret as encrypted Cloudflare secrets. The desktop app never contains or asks for OAuth credentials.
 
-#### Option A: Cloudflare Worker Auth Relay (Recommended for Public Releases & Open Source)
-To guarantee that your `GOOGLE_CLIENT_SECRET` is never baked into the distributed desktop binaries:
-1. Deploy the included lightweight [Hono Cloudflare Worker](file:///Users/shaik/workspace/myNotes/worker/README.md) (100% free tier):
+1. Deploy the relay (free tier). See [worker/README.md](worker/README.md) for the Google Cloud Console setup:
    ```bash
    cd worker
    npm install
@@ -88,23 +86,11 @@ To guarantee that your `GOOGLE_CLIENT_SECRET` is never baked into the distribute
    npx wrangler secret put GOOGLE_CLIENT_SECRET
    npm run deploy
    ```
-2. In your root `.env`:
+2. In your root `.env`, set the relay URL that gets baked into builds:
    ```env
    AUTH_SERVER_URL=https://mynotes-auth.<your-subdomain>.workers.dev
    ```
-When you distribute your app, users simply click **"Sign in with Google"** and get 1-click cloud sync while your Google secrets remain 100% confidential.
-
-#### Option B: Direct Desktop OAuth (For Local Development)
-1. In [Google Cloud Console](https://console.cloud.google.com/):
-   - Enable **Google Drive API**
-   - Create an OAuth 2.0 Client ID with application type **Desktop app**
-2. In your root `.env`:
-   ```env
-   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-   GOOGLE_CLIENT_SECRET=your-client-secret
-   ```
-
-Developers can also override these at runtime in *Settings -> Cloud Sync -> Developer Options*.
+   For local relay development, run `npm run dev` in `worker/` and set `AUTH_SERVER_URL=http://localhost:8787` (dev builds of the app read it from `.env` at runtime).
 
 ---
 

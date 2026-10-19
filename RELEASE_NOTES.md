@@ -1,3 +1,16 @@
+# Release Notes: myNotes v1.0.2
+
+**Release Date:** October 19, 2026
+**Downloads:** `myNotes_1.0.2_x64-setup.exe`, `myNotes_1.0.2_x64_en-US.msi` (Windows x64)
+
+## ☁️ Simpler Google Drive sign-in
+- Settings → Cloud Sync no longer shows developer options for OAuth client IDs, client secrets, or relay URLs. Just click **Sign in with Google**.
+- Sign-in always goes through the secure myNotes relay, and the app no longer supports embedded Google OAuth credentials.
+- OAuth credentials saved by older versions are removed from your device when the app starts.
+- If Google access is revoked or expires, myNotes signs you out cleanly and asks you to sign in again.
+
+---
+
 # Release Notes: myNotes v1.0.1
 
 **Release Date:** October 19, 2026

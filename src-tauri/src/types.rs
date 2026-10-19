@@ -134,10 +134,6 @@ pub struct BackupManifest {
 #[serde(rename_all = "camelCase")]
 pub struct CloudSyncConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub client_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub client_secret: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_email: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_name: Option<String>,
@@ -154,12 +150,6 @@ pub struct CloudSyncConfig {
     pub file_id: Option<String>,
     #[serde(default)]
     pub is_ready: bool,
-    #[serde(default)]
-    pub has_custom_creds: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub auth_server_url: Option<String>,
-    #[serde(default)]
-    pub has_auth_server: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
