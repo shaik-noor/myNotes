@@ -83,6 +83,10 @@ export interface CloudSyncConfig {
   isSyncing: boolean
   lastError?: string | null
   fileId?: string | null
+  isReady?: boolean
+  hasCustomCreds?: boolean
+  authServerUrl?: string | null
+  hasAuthServer?: boolean
 }
 
 export interface CloudSyncResult {

@@ -20,8 +20,8 @@ Welcome to the official 1.0.0 release of **myNotes**! This release marks a compl
 - **Relational Integrity:** Full schema management with foreign key constraints, recursive cascade deletion, cycle detection, and fractional indexing ordering.
 - **Automatic Link Reconciliation:** Automatically tracks bidirectional backlinks (`mynotes:<id>` and `mydesk-note:<id>`).
 
-### ☁️ 3. Google Drive AppData Cloud Sync (BYOC)
-- **Zero Subscription / Private Vault:** Bring Your Own Cloud (BYOC) using OAuth 2.0 PKCE with a local loopback server (`127.0.0.1:0/callback`).
+### ☁️ 3. Google Drive AppData Cloud Sync (1-Click BYOC)
+- **Zero Subscription / 1-Click Connect:** Bring Your Own Cloud (BYOC) using OAuth 2.0 PKCE with a local loopback server (`127.0.0.1:0/callback`). Pre-configured via `.env` so end users simply click "Connect" without entering client IDs or secrets.
 - **Hidden AppData Folder:** Syncs to Google Drive's protected `appDataFolder` without cluttering your main Drive files.
 - **Non-Destructive Differential Merging:** Last-Write-Wins (LWW) conflict resolution with timestamp-based merging of notes and links.
 

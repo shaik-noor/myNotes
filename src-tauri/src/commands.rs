@@ -322,10 +322,25 @@ pub async fn cloud_get_config(state: State<'_, AppState>) -> Result<ResultRespon
 #[tauri::command]
 pub async fn cloud_save_credentials(
     state: State<'_, AppState>,
-    client_id: String,
+    client_id: Option<String>,
     client_secret: Option<String>,
+    auth_server_url: Option<String>,
 ) -> Result<ResultResponse<()>, ()> {
-    match state.cloud.save_credentials(&client_id, client_secret.as_deref()) {
+    match state.cloud.save_credentials(
+        client_id.as_deref(),
+        client_secret.as_deref(),
+        auth_server_url.as_deref(),
+    ) {
+        Ok(_) => Ok(ResultResponse::ok_void()),
+        Err(e) => Ok(ResultResponse::err(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn cloud_reset_credentials(
+    state: State<'_, AppState>,
+) -> Result<ResultResponse<()>, ()> {
+    match state.cloud.reset_credentials() {
         Ok(_) => Ok(ResultResponse::ok_void()),
         Err(e) => Ok(ResultResponse::err(e)),
     }

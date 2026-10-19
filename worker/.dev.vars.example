@@ -1,0 +1,5 @@
+# Google OAuth 2.0 Credentials for Cloudflare Worker
+# (Set via `wrangler secret put GOOGLE_CLIENT_ID` and `wrangler secret put GOOGLE_CLIENT_SECRET` in production)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+APP_URL=

@@ -15,12 +15,12 @@ import {
 } from 'lucide-react'
 import type React from 'react'
 import { useEffect, useState } from 'react'
-import type { CloudSyncConfig } from '../types/notes'
+import appIcon from '../assets/icon.png'
 import { useTheme } from '../context/ThemeContext'
 import { useNotesStore } from '../store/useNotesStore'
+import type { CloudSyncConfig } from '../types/notes'
 import { NoteGlyph } from './notes/noteIcon'
 import type { SettingsTab } from './SettingsDialog'
-import appIcon from '../assets/icon.png'
 import { Button } from './ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { cn } from './ui/utils'
@@ -186,7 +186,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       </div>
 
       {/* Middle Area: Clean Draggable space with subtle centered document indicator */}
-      <div data-tauri-drag-region className="flex-1 h-full drag-region flex items-center justify-center px-4">
+      <div
+        data-tauri-drag-region
+        className="flex-1 h-full drag-region flex items-center justify-center px-4"
+      >
         {activeNote ? (
           <div className="no-drag flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-border/40 bg-card/40 text-2xs text-muted-foreground max-w-sm truncate shadow-3xs backdrop-blur-md">
             <NoteGlyph icon={activeNote.icon} isBook={isBook} className="size-3 shrink-0" />
@@ -261,8 +264,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             {cloudConfig?.isSyncing
               ? 'Syncing with Google Drive...'
               : cloudConfig?.isConnected
-                ? 'Google Drive: Connected & Synced'
-                : 'Connect Google Drive Storage'}
+                ? `Google Drive: Connected (${cloudConfig.userEmail || 'Active'})`
+                : cloudConfig?.isReady
+                  ? 'Connect Google Drive (1-Click)'
+                  : 'Connect Google Drive Storage'}
           </TooltipContent>
         </Tooltip>
 

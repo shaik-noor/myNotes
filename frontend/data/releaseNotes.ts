@@ -34,10 +34,10 @@ export const RELEASE_HISTORY: ReleaseItem[] = [
       },
       {
         category: 'cloud',
-        badge: 'Google Drive BYOC',
-        title: 'Private Cloud Vault Sync',
+        badge: 'Google Drive 1-Click',
+        title: '1-Click Private Cloud Vault Sync',
         description:
-          'Synchronize notes across devices via private Google Drive AppData folder using secure OAuth 2.0 PKCE loopback authentication.'
+          'Synchronize notes across devices via private Google Drive AppData folder using built-in OAuth credentials (.env) and PKCE loopback authentication — connect with a single click.'
       },
       {
         category: 'ui',

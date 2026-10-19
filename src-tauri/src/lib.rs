@@ -46,22 +46,22 @@ pub fn run() {
                 data_dir: app_data_dir,
             });
 
-            // Periodic background sync if connected
-            if cloud.is_connected() {
-                let cloud_clone = cloud.clone();
-                let handle = app.handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            // Periodic background sync
+            let cloud_clone = cloud.clone();
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                if cloud_clone.is_connected() {
                     let _ = cloud_clone.sync_now(&handle).await;
+                }
 
-                    loop {
-                        tokio::time::sleep(tokio::time::Duration::from_secs(300)).await;
-                        if cloud_clone.is_connected() {
-                            let _ = cloud_clone.sync_now(&handle).await;
-                        }
+                loop {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(300)).await;
+                    if cloud_clone.is_connected() {
+                        let _ = cloud_clone.sync_now(&handle).await;
                     }
-                });
-            }
+                }
+            });
 
             Ok(())
         })
@@ -87,6 +87,7 @@ pub fn run() {
             commands::backup_import,
             commands::cloud_get_config,
             commands::cloud_save_credentials,
+            commands::cloud_reset_credentials,
             commands::cloud_set_auto_sync,
             commands::cloud_login,
             commands::cloud_logout,

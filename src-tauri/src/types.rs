@@ -152,6 +152,14 @@ pub struct CloudSyncConfig {
     pub last_error: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_id: Option<String>,
+    #[serde(default)]
+    pub is_ready: bool,
+    #[serde(default)]
+    pub has_custom_creds: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth_server_url: Option<String>,
+    #[serde(default)]
+    pub has_auth_server: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

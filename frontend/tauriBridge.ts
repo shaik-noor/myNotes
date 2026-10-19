@@ -238,8 +238,15 @@ export const tauriApi = {
     getConfig: async (): Promise<Result<CloudSyncConfig>> => {
       return invoke<Result<CloudSyncConfig>>('cloud_get_config')
     },
-    saveCredentials: async (clientId: string, clientSecret?: string): Promise<Result> => {
-      return invoke<Result>('cloud_save_credentials', { clientId, clientSecret })
+    saveCredentials: async (
+      clientId?: string,
+      clientSecret?: string,
+      authServerUrl?: string
+    ): Promise<Result> => {
+      return invoke<Result>('cloud_save_credentials', { clientId, clientSecret, authServerUrl })
+    },
+    resetCredentials: async (): Promise<Result> => {
+      return invoke<Result>('cloud_reset_credentials')
     },
     login: async (): Promise<Result<{ email: string; name: string }>> => {
       return invoke<Result<{ email: string; name: string }>>('cloud_login')

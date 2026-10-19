@@ -40,6 +40,8 @@ lerna-debug.log*
 .env.*
 !.env.example
 *.local
+.dev.vars
+.wrangler/
 
 # IDEs and Editors
 .idea/

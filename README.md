@@ -74,12 +74,48 @@ npm run dev
 npm run tauri:build
 ```
 
+### Google Drive Cloud Storage & OAuth Configuration
+
+`myNotes` supports seamless **1-click Google Drive connection** for end-users without requiring each user to create their own Google Cloud console project.
+
+#### Option A: Cloudflare Worker Auth Relay (Recommended for Public Releases & Open Source)
+To guarantee that your `GOOGLE_CLIENT_SECRET` is never baked into the distributed desktop binaries:
+1. Deploy the included lightweight [Hono Cloudflare Worker](file:///Users/shaik/workspace/myNotes/worker/README.md) (100% free tier):
+   ```bash
+   cd worker
+   npm install
+   npx wrangler secret put GOOGLE_CLIENT_ID
+   npx wrangler secret put GOOGLE_CLIENT_SECRET
+   npm run deploy
+   ```
+2. In your root `.env`:
+   ```env
+   AUTH_SERVER_URL=https://mynotes-auth.<your-subdomain>.workers.dev
+   ```
+When you distribute your app, users simply click **"Sign in with Google"** and get 1-click cloud sync while your Google secrets remain 100% confidential.
+
+#### Option B: Direct Desktop OAuth (For Local Development)
+1. In [Google Cloud Console](https://console.cloud.google.com/):
+   - Enable **Google Drive API**
+   - Create an OAuth 2.0 Client ID with application type **Desktop app**
+2. In your root `.env`:
+   ```env
+   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   ```
+
+Developers can also override these at runtime in *Settings -> Cloud Sync -> Developer Options*.
+
 ---
 
 ## Project Structure
 
 ```
 myNotes/
+├── worker/                    # Cloudflare Worker Auth Relay (Hono, zero-secret OAuth)
+│   ├── src/index.ts           # /auth/login, /callback & /auth/refresh endpoints
+│   ├── wrangler.jsonc         # Cloudflare Worker configuration
+│   └── README.md              # Deployment guide
 ├── src-tauri/                 # Rust Tauri 2.0 Backend
 │   ├── Cargo.toml             # Rust dependencies (rusqlite, tokio, reqwest, tiny_http)
 │   ├── tauri.conf.json        # Tauri 2 configuration & window settings
