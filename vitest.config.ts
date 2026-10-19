@@ -8,8 +8,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@renderer': resolve(__dirname, 'src/renderer/src'),
-      '@': resolve(__dirname, 'src/renderer/src')
+      '@renderer': resolve(__dirname, 'frontend'),
+      '@': resolve(__dirname, 'frontend')
     }
   }
 })

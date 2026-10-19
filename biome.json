@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["src/**/*", "electron.vite.config.ts", "vitest.config.ts"]
+    "includes": ["frontend/**/*", "vite.config.ts", "vitest.config.ts"]
   },
   "formatter": {
     "enabled": true,

@@ -1,18 +1,61 @@
-node_modules
-.DS_Store
-dist
-out
-*.local
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs
+dist/
+dist-ssr/
+out/
+build/
+
+# Tauri & Rust
+target/
+src-tauri/target/
+src-tauri/gen/
+**/*.rs.bk
+*.pdb
+*.dSYM/
+
+# Local databases & note attachments (runtime data)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+.mynotes_data/
+note-attachments/
+
+# Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-.idea
-.vscode
-*.swp
-*.swo
+lerna-debug.log*
+
+# Environment & Secrets
 .env
 .env.*
 !.env.example
+*.local
 
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
