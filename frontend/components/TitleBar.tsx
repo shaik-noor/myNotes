@@ -168,9 +168,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               onClick={() => setSelectedNoteId(null)}
               className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold text-foreground/90 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer select-none"
             >
-              <span className="flex size-5 items-center justify-center rounded-md bg-notes/10 text-notes">
-                <NotebookPen className="size-3" />
-              </span>
+              <img
+                src="/frontend/assets/icon.png"
+                alt="myNotes"
+                className="size-5 rounded-md shadow-2xs object-cover"
+              />
               <span className="tracking-tight font-bold">myNotes</span>
             </button>
           </TooltipTrigger>

@@ -241,18 +241,25 @@ export const HomePage: React.FC<HomePageProps> = ({
       <div className="mx-auto max-w-6xl px-6 py-8 md:px-10 lg:px-12 space-y-9 pb-24">
         {/* Top Hero Section */}
         <section className="relative flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-border/40 pb-7">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-2xs font-medium text-muted-foreground backdrop-blur-md">
-              <Calendar className="size-3 text-notes" />
-              <span>{todayFormatted}</span>
+          <div className="flex items-start gap-4">
+            <img
+              src="/frontend/assets/icon.png"
+              alt="myNotes"
+              className="size-14 sm:size-16 rounded-2xl shadow-md border border-border/40 object-cover shrink-0 hidden sm:block mt-0.5"
+            />
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-2xs font-medium text-muted-foreground backdrop-blur-md">
+                <Calendar className="size-3 text-notes" />
+                <span>{todayFormatted}</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+                {greeting}, <span className="text-notes">Shaik</span> 👋
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
+                Welcome back to your personal workspace. Capture ideas, organize runbooks, and manage
+                documentation effortlessly.
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-              {greeting}, <span className="text-notes">Shaik</span> 👋
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
-              Welcome back to your personal workspace. Capture ideas, organize runbooks, and manage
-              documentation effortlessly.
-            </p>
           </div>
 
           {/* Quick Actions */}

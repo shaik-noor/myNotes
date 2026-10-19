@@ -831,13 +831,15 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             {activeTab === 'about' && (
               <div className="space-y-6">
                 <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-card/50 p-4">
-                  <div className="flex size-14 items-center justify-center rounded-2xl bg-notes/10 text-notes font-bold text-xl border border-notes/30">
-                    N
-                  </div>
+                  <img
+                    src="/frontend/assets/icon.png"
+                    alt="myNotes icon"
+                    className="size-14 rounded-2xl shadow-md border border-border/40 object-cover"
+                  />
                   <div>
                     <h3 className="text-base font-bold text-foreground">myNotes</h3>
                     <p className="text-xs text-muted-foreground">
-                      Version 1.0.0 (Production Desktop)
+                      Version 1.0.0 (Tauri 2.0 Native Desktop)
                     </p>
                     <p className="text-2xs text-muted-foreground mt-1">
                       Standalone note-taking workspace with Notion-grade polish.
@@ -849,7 +851,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   <div className="flex items-center justify-between p-3">
                     <span className="text-muted-foreground">Platform</span>
                     <span className="font-medium text-foreground">
-                      macOS Apple Silicon &amp; Cross-Platform
+                      Tauri 2.0 (Rust) &amp; macOS Apple Silicon
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3">
@@ -864,7 +866,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </div>
                   <div className="flex items-center justify-between p-3">
                     <span className="text-muted-foreground">Storage Engine</span>
-                    <span className="font-medium text-foreground">SQLite (better-sqlite3)</span>
+                    <span className="font-medium text-foreground">SQLite (Native Rusqlite &amp; WAL Mode)</span>
                   </div>
                   <div className="flex items-center justify-between p-3">
                     <span className="text-muted-foreground">Styling Framework</span>
