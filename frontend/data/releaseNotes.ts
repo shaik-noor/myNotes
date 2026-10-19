@@ -10,9 +10,37 @@ export interface ReleaseItem {
   }[]
 }
 
-export const APP_VERSION = '1.0.0'
+export const APP_VERSION = '1.0.1'
 
 export const RELEASE_HISTORY: ReleaseItem[] = [
+  {
+    version: '1.0.1',
+    date: 'October 2026',
+    title: 'Security & Sync Reliability Update',
+    highlights: [
+      {
+        category: 'cloud',
+        badge: 'Secure Sign-In',
+        title: 'Hardened Google Drive Authentication',
+        description:
+          'Google tokens never pass through the browser, the auth relay holds the client secret, and refresh tokens are pinned to the server that issued them.'
+      },
+      {
+        category: 'fixes',
+        badge: 'Sync Safety',
+        title: 'No More Overwrites on Failed Downloads',
+        description:
+          'Sync now stops instead of uploading over your cloud vault when it cannot be read, protecting edits made on other devices.'
+      },
+      {
+        category: 'ui',
+        badge: 'Locked Down',
+        title: 'Strict Content Security Policy',
+        description:
+          'The app window now enforces a strict CSP and no longer has direct filesystem access.'
+      }
+    ]
+  },
   {
     version: '1.0.0',
     date: 'October 2026',

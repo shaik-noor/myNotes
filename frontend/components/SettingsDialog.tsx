@@ -31,6 +31,7 @@ import { Button } from './ui/button'
 import { confirmDialog } from './ui/confirm'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 import { toast } from './ui/toast'
+import { APP_VERSION } from '../data/releaseNotes'
 import { cn } from './ui/utils'
 
 export type SettingsTab = 'appearance' | 'cloud' | 'data' | 'about'
@@ -203,8 +204,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     try {
       const res = await window.api?.cloud?.login?.()
       if (res?.success) {
-        toast.success('Connected to Google Drive', {
-          description: `Logged in as ${res.data?.email || 'User'}. Vault sync will keep notes updated across devices.`
+        // Sign-in finishes in the browser; config refreshes via the cloud:sync-* events
+        toast.info('Continue in your browser', {
+          description: 'Finish signing in with Google in the browser window that just opened.'
         })
         const configRes = await window.api?.cloud?.getConfig?.()
         if (configRes?.success && configRes.data) {
@@ -993,7 +995,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   <div>
                     <h3 className="text-base font-bold text-foreground">myNotes</h3>
                     <p className="text-xs text-muted-foreground">
-                      Version 1.0.0 (Tauri 2.0 Native Desktop)
+                      Version {APP_VERSION} (Tauri 2.0 Native Desktop)
                     </p>
                     <p className="text-2xs text-muted-foreground mt-1">
                       Standalone note-taking workspace with Notion-grade polish.
@@ -1043,7 +1045,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     className="w-full justify-center gap-2 text-xs font-semibold hover:bg-muted cursor-pointer h-9 rounded-xl"
                   >
                     <Sparkles className="size-3.5 text-notes" />
-                    What's New in v1.0.0 (Release Notes)
+                    What's New in v{APP_VERSION} (Release Notes)
                   </Button>
                 </div>
               </div>

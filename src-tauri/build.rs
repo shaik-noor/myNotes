@@ -68,13 +68,18 @@ fn main() {
     let trimmed_auth_url = auth_server_url.trim().trim_end_matches('/');
 
     if !trimmed_auth_url.is_empty() {
+        // Relay mode: the worker holds the Google credentials, so never bake them into the binary
         println!("cargo:rustc-env=BUILTIN_AUTH_SERVER_URL={}", trimmed_auth_url);
-    }
-    if !trimmed_id.is_empty() {
-        println!("cargo:rustc-env=BUILTIN_GOOGLE_CLIENT_ID={}", trimmed_id);
-    }
-    if !trimmed_secret.is_empty() {
-        println!("cargo:rustc-env=BUILTIN_GOOGLE_CLIENT_SECRET={}", trimmed_secret);
+        if !trimmed_secret.is_empty() {
+            println!("cargo:warning=AUTH_SERVER_URL is set; not embedding GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET in the app binary");
+        }
+    } else {
+        if !trimmed_id.is_empty() {
+            println!("cargo:rustc-env=BUILTIN_GOOGLE_CLIENT_ID={}", trimmed_id);
+        }
+        if !trimmed_secret.is_empty() {
+            println!("cargo:rustc-env=BUILTIN_GOOGLE_CLIENT_SECRET={}", trimmed_secret);
+        }
     }
 
     println!("cargo:rerun-if-env-changed=AUTH_SERVER_URL");

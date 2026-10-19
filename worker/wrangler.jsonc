@@ -4,7 +4,22 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-18",
   "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  // Don't expose per-version preview URLs of the auth relay
+  "preview_urls": false,
+  // Pins the OAuth redirect URI (<APP_URL>/callback) so it can't be influenced by the request Host
+  "vars": {
+    "APP_URL": "https://mynotes-auth.mail-noru-in.workers.dev"
+  },
   "observability": {
     "enabled": true
-  }
+  },
+  // Per-IP limit on /auth/* endpoints
+  "ratelimits": [
+    {
+      "name": "AUTH_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 30, "period": 60 }
+    }
+  ]
 }

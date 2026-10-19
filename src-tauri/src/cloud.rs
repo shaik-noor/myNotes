@@ -61,7 +61,9 @@ fn get_runtime_env_or_dotenv(key: &str) -> Option<String> {
         }
     }
 
-    // 2. Search for .env in current and parent directories
+    // 2. Search for .env in current and parent directories (dev builds only, so a stray
+    //    .env next to a release binary can't redirect auth)
+    #[cfg(debug_assertions)]
     if let Ok(cwd) = std::env::current_dir() {
         let candidates = [
             cwd.join(".env"),
@@ -99,6 +101,130 @@ fn get_runtime_env_or_dotenv(key: &str) -> Option<String> {
     None
 }
 
+struct LoginTokens {
+    access_token: String,
+    refresh_token: Option<String>,
+    expires_in: Option<u64>,
+    email: Option<String>,
+    name: Option<String>,
+    picture: Option<String>,
+}
+
+const TOKEN_KEYS: [&str; 7] = [
+    "accessToken",
+    "refreshToken",
+    "tokenExpiry",
+    "tokenIssuer",
+    "userEmail",
+    "userName",
+    "userPicture",
+];
+
+/// Only https relays are accepted (plain http just for loopback in dev builds)
+fn validate_auth_server_url(raw: &str) -> Result<String, String> {
+    let trimmed = raw.trim().trim_end_matches('/');
+    let parsed = url::Url::parse(trimmed).map_err(|_| "Auth server URL is not a valid URL".to_string())?;
+    let is_loopback = matches!(parsed.host_str(), Some("127.0.0.1") | Some("localhost"));
+    let scheme_ok = parsed.scheme() == "https" || (cfg!(debug_assertions) && parsed.scheme() == "http" && is_loopback);
+    if !scheme_ok || parsed.host_str().is_none() || !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err("Auth server URL must be an https:// URL".to_string());
+    }
+    if parsed.query().is_some() || parsed.fragment().is_some() {
+        return Err("Auth server URL must not contain a query or fragment".to_string());
+    }
+    Ok(trimmed.to_string())
+}
+
+fn escape_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
+fn exchange_code_via_relay(
+    client: &reqwest::blocking::Client,
+    auth_server_url: &str,
+    code: &str,
+    code_verifier: &str,
+) -> Result<LoginTokens, String> {
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct RelayTokenResponse {
+        success: bool,
+        access_token: Option<String>,
+        refresh_token: Option<String>,
+        expires_in: Option<u64>,
+        email: Option<String>,
+        name: Option<String>,
+        picture: Option<String>,
+        error: Option<String>,
+    }
+
+    let res = client
+        .post(format!("{}/auth/token", auth_server_url))
+        .json(&serde_json::json!({ "code": code, "codeVerifier": code_verifier }))
+        .send()
+        .map_err(|e| format!("Auth relay request failed: {}", e))?
+        .json::<RelayTokenResponse>()
+        .map_err(|e| format!("Failed to parse auth relay response: {}", e))?;
+
+    match res.access_token {
+        Some(access_token) if res.success => Ok(LoginTokens {
+            access_token,
+            refresh_token: res.refresh_token,
+            expires_in: res.expires_in,
+            email: res.email,
+            name: res.name,
+            picture: res.picture,
+        }),
+        _ => Err(res.error.unwrap_or_else(|| "Token exchange failed on auth relay".to_string())),
+    }
+}
+
+fn exchange_code_direct(
+    client: &reqwest::blocking::Client,
+    manager: &CloudSyncManager,
+    code: &str,
+    code_verifier: &str,
+    redirect_uri: &str,
+) -> Result<LoginTokens, String> {
+    let mut params = std::collections::HashMap::new();
+    params.insert("client_id", manager.get_client_id());
+    let client_secret = manager.get_client_secret();
+    if !client_secret.is_empty() {
+        params.insert("client_secret", client_secret);
+    }
+    params.insert("code", code.to_string());
+    params.insert("code_verifier", code_verifier.to_string());
+    params.insert("grant_type", "authorization_code".to_string());
+    params.insert("redirect_uri", redirect_uri.to_string());
+
+    let tok = client
+        .post(OAUTH_TOKEN_URL)
+        .form(&params)
+        .send()
+        .and_then(|r| r.json::<TokenResponse>())
+        .map_err(|e| e.to_string())?;
+
+    let info = client
+        .get(USERINFO_URL)
+        .header("Authorization", format!("Bearer {}", tok.access_token))
+        .send()
+        .and_then(|r| r.json::<UserInfoResponse>())
+        .ok();
+
+    Ok(LoginTokens {
+        access_token: tok.access_token,
+        refresh_token: tok.refresh_token,
+        expires_in: tok.expires_in,
+        email: info.as_ref().and_then(|i| i.email.clone()),
+        name: info.as_ref().and_then(|i| i.name.clone()),
+        picture: info.and_then(|i| i.picture),
+    })
+}
+
 impl CloudSyncManager {
     pub fn new(db: Arc<Database>) -> Self {
         Self {
@@ -114,6 +240,11 @@ impl CloudSyncManager {
             if !trimmed.is_empty() {
                 return trimmed;
             }
+        }
+
+        // A user-supplied Client ID (without a custom relay) means direct Google OAuth
+        if self.has_custom_client_id() {
+            return String::new();
         }
 
         // 2. Runtime environment variable or .env file
@@ -185,14 +316,34 @@ impl CloudSyncManager {
         String::new()
     }
 
-    pub fn has_custom_credentials(&self) -> bool {
-        let has_custom_id = self
-            .db
+    fn has_custom_client_id(&self) -> bool {
+        self.db
             .get_cloud_sync_value("clientId")
             .ok()
             .flatten()
             .map(|v| !v.trim().is_empty())
-            .unwrap_or(false);
+            .unwrap_or(false)
+    }
+
+    /// Identifies who issued the stored tokens; refresh tokens are only ever sent back to their issuer
+    fn token_issuer(&self) -> String {
+        let auth_server_url = self.get_auth_server_url();
+        if auth_server_url.is_empty() {
+            format!("google:{}", self.get_client_id())
+        } else {
+            format!("relay:{}", auth_server_url)
+        }
+    }
+
+    fn clear_tokens(&self) -> Result<(), String> {
+        for key in TOKEN_KEYS {
+            self.db.set_cloud_sync_value(key, None)?;
+        }
+        Ok(())
+    }
+
+    pub fn has_custom_credentials(&self) -> bool {
+        let has_custom_id = self.has_custom_client_id();
 
         let has_custom_server = self
             .db
@@ -206,6 +357,7 @@ impl CloudSyncManager {
     }
 
     pub fn reset_credentials(&self) -> Result<(), String> {
+        self.clear_tokens()?;
         self.db.set_cloud_sync_value("clientId", None)?;
         self.db.set_cloud_sync_value("clientSecret", None)?;
         self.db.set_cloud_sync_value("authServerUrl", None)?;
@@ -237,7 +389,7 @@ impl CloudSyncManager {
             client_id: if client_id.is_empty() {
                 None
             } else {
-                Some(format!("{}...", &client_id[..client_id.len().min(12)]))
+                Some(format!("{}...", client_id.chars().take(12).collect::<String>()))
             },
             client_secret: if client_secret.is_empty() {
                 None
@@ -270,13 +422,16 @@ impl CloudSyncManager {
         client_secret: Option<&str>,
         auth_server_url: Option<&str>,
     ) -> Result<(), String> {
-        if let Some(url) = auth_server_url {
-            let trimmed = url.trim().trim_end_matches('/');
-            if trimmed.is_empty() {
-                self.db.set_cloud_sync_value("authServerUrl", None)?;
-            } else {
-                self.db.set_cloud_sync_value("authServerUrl", Some(trimmed))?;
-            }
+        let validated_url = match auth_server_url.map(str::trim) {
+            Some(url) if !url.is_empty() => Some(Some(validate_auth_server_url(url)?)),
+            Some(_) => Some(None),
+            None => None,
+        };
+
+        let issuer_before = self.token_issuer();
+
+        if let Some(url) = validated_url {
+            self.db.set_cloud_sync_value("authServerUrl", url.as_deref())?;
         }
         if let Some(id) = client_id {
             let trimmed = id.trim();
@@ -293,6 +448,11 @@ impl CloudSyncManager {
             } else {
                 self.db.set_cloud_sync_value("clientSecret", Some(trimmed_sec))?;
             }
+        }
+
+        // Tokens are bound to the relay/client that issued them
+        if self.token_issuer() != issuer_before {
+            self.clear_tokens()?;
         }
         Ok(())
     }
@@ -368,9 +528,32 @@ impl CloudSyncManager {
 
         let manager = self.clone();
         let redirect_uri_clone = redirect_uri.clone();
+        let issuer = self.token_issuer();
 
         tokio::task::spawn_blocking(move || {
-            for request in server.incoming_requests() {
+            let html_header = || {
+                tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).unwrap()
+            };
+
+            let report_error = |msg: &str| {
+                let _ = manager.db.set_cloud_sync_value("lastError", Some(msg));
+                let _ = app_handle.emit("cloud:sync-error", msg);
+            };
+
+            // Give up after a while so abandoned sign-ins don't leave a listener and port open forever
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(300);
+            loop {
+                let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+                if remaining.is_zero() {
+                    report_error("Google sign-in timed out. Please try again.");
+                    break;
+                }
+                let request = match server.recv_timeout(remaining) {
+                    Ok(Some(r)) => r,
+                    Ok(None) => continue,
+                    Err(_) => break,
+                };
+
                 let url = request.url().to_string();
                 if !url.starts_with("/callback") {
                     let _ = request.respond(tiny_http::Response::from_string("Not found").with_status_code(404));
@@ -382,61 +565,59 @@ impl CloudSyncManager {
                     Ok(u) => u,
                     Err(_) => {
                         let _ = request.respond(tiny_http::Response::from_string("Bad Request").with_status_code(400));
-                        break;
+                        continue;
                     }
                 };
 
                 let query_pairs: std::collections::HashMap<_, _> = url_obj.query_pairs().into_owned().collect();
                 let ret_state = query_pairs.get("state");
                 let error_param = query_pairs.get("error");
-                let token_data_param = query_pairs.get("token_data");
                 let code = query_pairs.get("code");
+
+                // Ignore anything that doesn't carry our CSRF state so stray requests can't cancel or hijack the login
+                if ret_state != Some(&state) {
+                    let _ = request.respond(tiny_http::Response::from_string("Invalid state").with_status_code(400));
+                    continue;
+                }
 
                 if let Some(err) = error_param {
                     let html = format!(
                         r#"<html><body style="font-family:-apple-system,sans-serif;background:#0f1115;color:#f87171;text-align:center;padding:60px 20px;">
                         <h2>Authentication Cancelled</h2><p>{}</p></body></html>"#,
-                        err
+                        escape_html(err)
                     );
-                    let _ = request.respond(tiny_http::Response::from_string(html).with_header(
-                        tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).unwrap()
-                    ));
+                    let _ = request.respond(tiny_http::Response::from_string(html).with_header(html_header()));
+                    report_error(&format!("Google sign-in failed: {}", err));
                     break;
                 }
 
-                if ret_state != Some(&state) {
-                    let _ = request.respond(tiny_http::Response::from_string("Invalid state").with_status_code(400));
+                let Some(code_val) = code else {
+                    let _ = request.respond(tiny_http::Response::from_string("Invalid request").with_status_code(400));
                     break;
-                }
+                };
 
-                // 1. Check if tokens arrived from Cloudflare Worker Auth Relay
-                if let Some(token_json) = token_data_param {
-                    #[derive(Deserialize)]
-                    #[serde(rename_all = "camelCase")]
-                    struct RelayPayload {
-                        #[serde(alias = "access_token")]
-                        access_token: String,
-                        #[serde(alias = "refresh_token")]
-                        refresh_token: Option<String>,
-                        #[serde(alias = "expires_in")]
-                        expires_in: Option<u64>,
-                        email: Option<String>,
-                        name: Option<String>,
-                        picture: Option<String>,
-                    }
+                let client = reqwest::blocking::Client::new();
+                let login_result = if !auth_server_url.is_empty() {
+                    // Relay mode: redeem the PKCE-bound code at the worker, which holds the client secret
+                    exchange_code_via_relay(&client, &auth_server_url, code_val, &code_verifier)
+                } else {
+                    exchange_code_direct(&client, &manager, code_val, &code_verifier, &redirect_uri_clone)
+                };
 
-                    if let Ok(data) = serde_json::from_str::<RelayPayload>(token_json) {
-                        let _ = manager.db.set_cloud_sync_value("accessToken", Some(&data.access_token));
-                        if let Some(ref rt) = data.refresh_token {
+                match login_result {
+                    Ok(login) => {
+                        let _ = manager.db.set_cloud_sync_value("accessToken", Some(&login.access_token));
+                        if let Some(ref rt) = login.refresh_token {
                             if !rt.is_empty() {
                                 let _ = manager.db.set_cloud_sync_value("refreshToken", Some(rt));
                             }
                         }
-                        let expiry = chrono::Utc::now().timestamp() + (data.expires_in.unwrap_or(3600) as i64);
+                        let expiry = chrono::Utc::now().timestamp() + (login.expires_in.unwrap_or(3600) as i64);
                         let _ = manager.db.set_cloud_sync_value("tokenExpiry", Some(&expiry.to_string()));
-                        let _ = manager.db.set_cloud_sync_value("userEmail", data.email.as_deref());
-                        let _ = manager.db.set_cloud_sync_value("userName", data.name.as_deref());
-                        let _ = manager.db.set_cloud_sync_value("userPicture", data.picture.as_deref());
+                        let _ = manager.db.set_cloud_sync_value("tokenIssuer", Some(&issuer));
+                        let _ = manager.db.set_cloud_sync_value("userEmail", login.email.as_deref());
+                        let _ = manager.db.set_cloud_sync_value("userName", login.name.as_deref());
+                        let _ = manager.db.set_cloud_sync_value("userPicture", login.picture.as_deref());
 
                         let html = r#"
                         <html>
@@ -444,14 +625,12 @@ impl CloudSyncManager {
                           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1115; color: #f8fafc; text-align: center; padding: 60px 20px;">
                             <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 32px; margin-bottom: 20px;">✓</div>
                             <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 10px 0;">Google Drive Connected!</h1>
-                            <p style="color: #94a3b8; font-size: 14px; max-width: 420px; margin: 0 auto 24px auto;">myNotes is now connected via secure Cloudflare relay. You can safely close this tab.</p>
-                            <script>setTimeout(function() { window.close(); }, 2000);</script>
+                            <p style="color: #94a3b8; font-size: 14px; max-width: 420px; margin: 0 auto 24px auto;">myNotes is now connected to your private Google Drive storage. You can safely close this tab and return to the app.</p>
+                            <script>setTimeout(function() { window.close(); }, 3000);</script>
                           </body>
                         </html>"#;
 
-                        let _ = request.respond(tiny_http::Response::from_string(html).with_header(
-                            tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).unwrap()
-                        ));
+                        let _ = request.respond(tiny_http::Response::from_string(html).with_header(html_header()));
 
                         let _ = app_handle.emit("cloud:sync-completed", ());
                         let manager_sync = manager.clone();
@@ -459,76 +638,12 @@ impl CloudSyncManager {
                         tokio::spawn(async move {
                             let _ = manager_sync.sync_now(&app_sync).await;
                         });
-                        break;
+                    }
+                    Err(e) => {
+                        let _ = request.respond(tiny_http::Response::from_string(format!("Token exchange failed: {}", e)).with_status_code(400));
+                        report_error(&format!("Google sign-in failed: {}", e));
                     }
                 }
-
-                // 2. Direct code exchange fallback
-                if let Some(code_val) = code {
-                    let client = reqwest::blocking::Client::new();
-                    let mut params = std::collections::HashMap::new();
-                    params.insert("client_id", manager.get_client_id());
-                    let client_secret = manager.get_client_secret();
-                    if !client_secret.is_empty() {
-                        params.insert("client_secret", client_secret);
-                    }
-                    params.insert("code", code_val.clone());
-                    params.insert("code_verifier", code_verifier.clone());
-                    params.insert("grant_type", "authorization_code".to_string());
-                    params.insert("redirect_uri", redirect_uri_clone.clone());
-
-                    let token_res = client.post(OAUTH_TOKEN_URL).form(&params).send();
-                    match token_res.and_then(|r| r.json::<TokenResponse>()) {
-                        Ok(tok) => {
-                            let _ = manager.db.set_cloud_sync_value("accessToken", Some(&tok.access_token));
-                            if let Some(ref rt) = tok.refresh_token {
-                                let _ = manager.db.set_cloud_sync_value("refreshToken", Some(rt));
-                            }
-                            let expiry = chrono::Utc::now().timestamp() + (tok.expires_in.unwrap_or(3600) as i64);
-                            let _ = manager.db.set_cloud_sync_value("tokenExpiry", Some(&expiry.to_string()));
-
-                            // Fetch user info
-                            if let Ok(info_res) = client
-                                .get(USERINFO_URL)
-                                .header("Authorization", format!("Bearer {}", tok.access_token))
-                                .send()
-                                .and_then(|r| r.json::<UserInfoResponse>())
-                            {
-                                let _ = manager.db.set_cloud_sync_value("userEmail", info_res.email.as_deref());
-                                let _ = manager.db.set_cloud_sync_value("userName", info_res.name.as_deref());
-                                let _ = manager.db.set_cloud_sync_value("userPicture", info_res.picture.as_deref());
-                            }
-
-                            let html = r#"
-                            <html>
-                              <head><title>myNotes - Connected</title></head>
-                              <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1115; color: #f8fafc; text-align: center; padding: 60px 20px;">
-                                <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 32px; margin-bottom: 20px;">✓</div>
-                                <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 10px 0;">Google Drive Connected!</h1>
-                                <p style="color: #94a3b8; font-size: 14px; max-width: 420px; margin: 0 auto 24px auto;">myNotes is now connected to your private Google Drive storage. You can safely close this tab and return to the app.</p>
-                                <script>setTimeout(function() { window.close(); }, 3000);</script>
-                              </body>
-                            </html>"#;
-
-                            let _ = request.respond(tiny_http::Response::from_string(html).with_header(
-                                tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).unwrap()
-                            ));
-
-                            let _ = app_handle.emit("cloud:sync-completed", ());
-                            let manager_sync = manager.clone();
-                            let app_sync = app_handle.clone();
-                            tokio::spawn(async move {
-                                let _ = manager_sync.sync_now(&app_sync).await;
-                            });
-                        }
-                        Err(e) => {
-                            let _ = request.respond(tiny_http::Response::from_string(format!("Token exchange failed: {}", e)).with_status_code(400));
-                        }
-                    }
-                    break;
-                }
-
-                let _ = request.respond(tiny_http::Response::from_string("Invalid request").with_status_code(400));
                 break;
             }
         });
@@ -546,6 +661,12 @@ impl CloudSyncManager {
             .ok()
             .flatten()
             .ok_or("Not logged in to Google Drive")?;
+
+        // Never send a refresh token to anyone but the relay/client that issued it
+        if self.db.get_cloud_sync_value("tokenIssuer").ok().flatten() != Some(self.token_issuer()) {
+            self.clear_tokens()?;
+            return Err("Google Drive sign-in settings changed. Please sign in again.".to_string());
+        }
 
         let expiry: i64 = self
             .db
@@ -675,7 +796,8 @@ impl CloudSyncManager {
             .header(AUTHORIZATION, format!("Bearer {}", access_token))
             .send()
             .await
-            .map_err(|e| e.to_string())?;
+            .and_then(|r| r.error_for_status())
+            .map_err(|e| format!("Drive search failed: {}", e))?;
 
         let file_list: DriveFileList = search_res.json().await.map_err(|e| e.to_string())?;
         let existing_file_id = file_list
@@ -693,16 +815,18 @@ impl CloudSyncManager {
                 .header(AUTHORIZATION, format!("Bearer {}", access_token))
                 .send()
                 .await
-                .map_err(|e| e.to_string())?;
+                .and_then(|r| r.error_for_status())
+                .map_err(|e| format!("Drive download failed: {}", e))?;
 
-            if down_res.status().is_success() {
-                if let Ok(remote_manifest) = down_res.json::<BackupManifest>().await {
-                    let (_, changed) = self.db.merge_vault_from_cloud(remote_manifest)?;
-                    downloaded = true;
-                    if changed {
-                        let _ = app_handle.emit("cloud:vault-updated", ());
-                    }
-                }
+            // Abort rather than upload over a remote vault we couldn't read: that would drop other devices' edits
+            let remote_manifest = down_res
+                .json::<BackupManifest>()
+                .await
+                .map_err(|e| format!("Could not read the cloud vault, sync aborted: {}", e))?;
+            let (_, changed) = self.db.merge_vault_from_cloud(remote_manifest)?;
+            downloaded = true;
+            if changed {
+                let _ = app_handle.emit("cloud:vault-updated", ());
             }
         }
 
@@ -721,7 +845,8 @@ impl CloudSyncManager {
                 .body(manifest_bytes)
                 .send()
                 .await
-                .map_err(|e| e.to_string())?;
+                .and_then(|r| r.error_for_status())
+                .map_err(|e| format!("Drive upload failed: {}", e))?;
             fid.clone()
         } else {
             // Create new file via multipart upload
@@ -748,7 +873,8 @@ impl CloudSyncManager {
                 .multipart(form)
                 .send()
                 .await
-                .map_err(|e| e.to_string())?;
+                .and_then(|r| r.error_for_status())
+                .map_err(|e| format!("Drive upload failed: {}", e))?;
 
             let new_file: DriveFileItem = res.json().await.map_err(|e| e.to_string())?;
             new_file.id

@@ -23,6 +23,7 @@ import { NoteGlyph } from './notes/noteIcon'
 import type { SettingsTab } from './SettingsDialog'
 import { Button } from './ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
+import { APP_VERSION } from '../data/releaseNotes'
 import { cn } from './ui/utils'
 
 interface TitleBarProps {
@@ -294,12 +295,12 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               size="icon-xs"
               onClick={onOpenReleaseNotes}
               className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer"
-              aria-label="What's New in v1.0.0"
+              aria-label={`What's New in v${APP_VERSION}`}
             >
               <Sparkles className="size-3.5 text-amber-500/80 hover:text-amber-500" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">What's New in v1.0.0</TooltipContent>
+          <TooltipContent side="bottom">What's New in v{APP_VERSION}</TooltipContent>
         </Tooltip>
       </div>
     </div>

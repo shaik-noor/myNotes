@@ -3,13 +3,11 @@
   "identifier": "default",
   "description": "enables the default permissions for myNotes",
   "windows": [
-    "main",
-    "*"
+    "main"
   ],
   "permissions": [
     "core:default",
     "dialog:default",
-    "opener:default",
-    "fs:default"
+    "opener:default"
   ]
 }

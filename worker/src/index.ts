@@ -1,311 +1,269 @@
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
+import { Hono, type Context } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
+import { secureHeaders } from 'hono/secure-headers'
 
 type Bindings = {
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string
   APP_URL?: string
+  AUTH_LIMITER?: RateLimit
 }
+
+type AppContext = Context<{ Bindings: Bindings }>
 
 const SCOPES =
   'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
 
+const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo'
+
+// Input formats produced by the desktop app (see src-tauri/src/cloud.rs start_login)
+const STATE_RE = /^[A-Za-z0-9_-]{16,128}$/
+const PKCE_RE = /^[A-Za-z0-9._~-]{43,128}$/
+const MAX_CODE_LEN = 512
+const MAX_REFRESH_TOKEN_LEN = 2048
+
 const app = new Hono<{ Bindings: Bindings }>()
 
-app.use('*', cors())
-
-// Health check
-app.get('/', (c) => {
-  const isConfigured = Boolean(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET)
-  return c.json({
-    service: 'myNotes Google OAuth Relay',
-    status: 'healthy',
-    configured: isConfigured,
-    version: '1.0.0'
+// No CORS: only the native desktop app (not browsers) calls the JSON endpoints.
+app.use(
+  '*',
+  secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'none'"],
+      styleSrc: ["'unsafe-inline'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'none'"],
+      formAction: ["'none'"]
+    },
+    referrerPolicy: 'no-referrer',
+    crossOriginResourcePolicy: 'same-origin'
   })
+)
+app.use('*', async (c, next) => {
+  await next()
+  c.header('Cache-Control', 'no-store')
+})
+app.use('/auth/*', bodyLimit({ maxSize: 8 * 1024, onError: (c) => c.json({ success: false, error: 'Request too large' }, 413) }))
+app.use('/auth/*', async (c, next) => {
+  if (c.env.AUTH_LIMITER) {
+    const ip = c.req.header('cf-connecting-ip') || 'unknown'
+    const { success } = await c.env.AUTH_LIMITER.limit({ key: ip })
+    if (!success) {
+      return c.json({ success: false, error: 'Too many requests' }, 429)
+    }
+  }
+  await next()
 })
 
-// Step 1: Start login from Desktop App
-app.get('/auth/login', (c) => {
-  const port = c.req.query('port')
-  const state = c.req.query('state') || ''
-  const codeChallenge = c.req.query('code_challenge') || ''
+const isConfigured = (c: AppContext) => Boolean(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET)
 
-  if (!port || Number.isNaN(Number(port))) {
-    return c.text('Invalid or missing desktop loopback port parameter', 400)
-  }
+// Must match the Authorized redirect URI registered in Google Cloud Console exactly
+const redirectUri = (c: AppContext) => `${(c.env.APP_URL || new URL(c.req.url).origin).replace(/\/+$/, '')}/callback`
 
-  if (!c.env.GOOGLE_CLIENT_ID || !c.env.GOOGLE_CLIENT_SECRET) {
-    return c.text('Cloudflare Worker missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET secrets', 500)
-  }
+const escapeHtml = (s: string) =>
+  s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] as string)
 
-  // Pack desktop return coordinates into the state token
-  const statePayload = btoa(
-    JSON.stringify({
-      port: Number(port),
-      state,
-      challenge: codeChallenge
-    })
+const errorPage = (c: AppContext, title: string, message: string, status: 400 | 500 = 400) =>
+  c.html(
+    `<!DOCTYPE html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>${escapeHtml(title)} - myNotes</title></head>
+  <body style="font-family: -apple-system, sans-serif; background: #0f1115; color: #f87171; text-align: center; padding: 60px 20px;">
+    <h2>${escapeHtml(title)}</h2>
+    <p style="color: #94a3b8;">${escapeHtml(message)}</p>
+  </body>
+</html>`,
+    status
   )
 
-  const origin = c.env.APP_URL || new URL(c.req.url).origin
-  const redirectUri = `${origin}/callback`
+const toBase64Url = (s: string) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const fromBase64Url = (s: string) => atob(s.replace(/-/g, '+').replace(/_/g, '/'))
+
+const parsePort = (value: string | undefined): number | null => {
+  if (!value || !/^\d{1,5}$/.test(value)) return null
+  const port = Number(value)
+  return port >= 1024 && port <= 65535 ? port : null
+}
+
+// Google's `state` round-trip carries the desktop loopback port and the desktop's own CSRF state.
+const decodeState = (value: string | undefined): { port: number; state: string } | null => {
+  if (!value || value.length > 512) return null
+  try {
+    const decoded = JSON.parse(fromBase64Url(value)) as { p?: unknown; s?: unknown }
+    const port = parsePort(String(decoded.p))
+    const state = typeof decoded.s === 'string' && STATE_RE.test(decoded.s) ? decoded.s : null
+    return port && state ? { port, state } : null
+  } catch {
+    return null
+  }
+}
+
+const loopbackUrl = (port: number, params: Record<string, string>) =>
+  `http://127.0.0.1:${port}/callback?${new URLSearchParams(params).toString()}`
+
+const googleTokenRequest = async (params: Record<string, string>) => {
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params).toString()
+  })
+  const data = (await res.json().catch(() => ({}))) as {
+    access_token?: string
+    refresh_token?: string
+    expires_in?: number
+    error?: string
+    error_description?: string
+  }
+  return { ok: res.ok && Boolean(data.access_token), data }
+}
+
+const readJson = async <T>(c: AppContext): Promise<T | null> => {
+  try {
+    return (await c.req.json()) as T
+  } catch {
+    return null
+  }
+}
+
+// Health check
+app.get('/', (c) =>
+  c.json({
+    service: 'myNotes Google OAuth Relay',
+    status: 'healthy',
+    configured: isConfigured(c),
+    version: '2.0.0'
+  })
+)
+
+// Step 1: Desktop app opens this in the browser; we forward to Google consent with the desktop's PKCE challenge.
+app.get('/auth/login', (c) => {
+  const port = parsePort(c.req.query('port'))
+  const state = c.req.query('state')
+  const codeChallenge = c.req.query('code_challenge')
+
+  if (!port || !state || !STATE_RE.test(state) || !codeChallenge || !PKCE_RE.test(codeChallenge)) {
+    return errorPage(c, 'Invalid Request', 'Missing or invalid login parameters. Please start sign-in from the myNotes app.')
+  }
+  if (!isConfigured(c)) {
+    return errorPage(c, 'Service Unavailable', 'The authentication relay is not configured.', 500)
+  }
 
   const params = new URLSearchParams({
     client_id: c.env.GOOGLE_CLIENT_ID,
-    redirect_uri: redirectUri,
+    redirect_uri: redirectUri(c),
     response_type: 'code',
     scope: SCOPES,
     access_type: 'offline',
     prompt: 'consent',
-    state: statePayload
+    include_granted_scopes: 'true',
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+    state: toBase64Url(JSON.stringify({ p: port, s: state }))
   })
 
-  // Google OAuth URL (Worker uses confidential client secret on exchange, no PKCE required)
-  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
-  return c.redirect(googleAuthUrl)
+  return c.redirect(`${GOOGLE_AUTH_URL}?${params.toString()}`)
 })
 
-// Step 2: Google redirects here after user signs in
-app.get('/callback', async (c) => {
+// Step 2: Google redirects here. Only the one-time, PKCE-bound code is forwarded to the desktop loopback;
+// no tokens ever pass through the browser.
+app.get('/callback', (c) => {
+  const target = decodeState(c.req.query('state'))
+  if (!target) {
+    return errorPage(c, 'Invalid Request', 'This sign-in link is invalid or has expired. Please start sign-in from the myNotes app.')
+  }
+
   const code = c.req.query('code')
-  const stateParam = c.req.query('state')
-  const errorParam = c.req.query('error')
+  const error = c.req.query('error')
 
-  let port = 0
-  let originalState = ''
-
-  if (stateParam) {
-    try {
-      const decoded = JSON.parse(atob(stateParam))
-      port = decoded.port || 0
-      originalState = decoded.state || ''
-    } catch (e) {
-      console.error('Failed to parse state:', e)
-    }
+  if (error || !code || code.length > MAX_CODE_LEN) {
+    const reason = error === 'access_denied' ? 'Authentication was cancelled' : 'Authentication failed'
+    return c.redirect(loopbackUrl(target.port, { error: reason, state: target.state }))
   }
 
-  if (errorParam || !code) {
-    const errorMsg = errorParam || 'Authentication was cancelled'
-    if (port > 0) {
-      return c.redirect(
-        `http://127.0.0.1:${port}/callback?error=${encodeURIComponent(errorMsg)}&state=${encodeURIComponent(originalState)}`
-      )
-    }
-    return c.html(`
-      <!DOCTYPE html>
-      <html>
-        <head><title>Authentication Cancelled</title></head>
-        <body style="font-family: -apple-system, sans-serif; background: #0f1115; color: #f87171; text-align: center; padding: 60px 20px;">
-          <h2>Authentication Cancelled</h2>
-          <p style="color: #94a3b8;">${errorMsg}</p>
-        </body>
-      </html>
-    `)
+  return c.redirect(loopbackUrl(target.port, { code, state: target.state }))
+})
+
+// Step 3: Desktop app redeems the code with its PKCE verifier; the client secret stays on the edge.
+app.post('/auth/token', async (c) => {
+  const body = await readJson<{ code?: unknown; codeVerifier?: unknown }>(c)
+  const code = body?.code
+  const codeVerifier = body?.codeVerifier
+
+  if (
+    typeof code !== 'string' ||
+    !code ||
+    code.length > MAX_CODE_LEN ||
+    typeof codeVerifier !== 'string' ||
+    !PKCE_RE.test(codeVerifier)
+  ) {
+    return c.json({ success: false, error: 'Invalid request' }, 400)
+  }
+  if (!isConfigured(c)) {
+    return c.json({ success: false, error: 'Auth relay is not configured' }, 500)
   }
 
-  const origin = c.env.APP_URL || new URL(c.req.url).origin
-  const redirectUri = `${origin}/callback`
-
-  // Exchange authorization code for tokens securely on Cloudflare Worker
-  const tokenParams = new URLSearchParams({
+  const { ok, data } = await googleTokenRequest({
     client_id: c.env.GOOGLE_CLIENT_ID,
     client_secret: c.env.GOOGLE_CLIENT_SECRET,
     code,
+    code_verifier: codeVerifier,
     grant_type: 'authorization_code',
-    redirect_uri: redirectUri
+    redirect_uri: redirectUri(c)
   })
 
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: tokenParams.toString()
-  })
-
-  if (!tokenRes.ok) {
-    const errText = await tokenRes.text()
-    console.error('Token exchange failed:', errText)
-    if (port > 0) {
-      return c.redirect(
-        `http://127.0.0.1:${port}/callback?error=${encodeURIComponent('Token exchange failed')}&state=${encodeURIComponent(originalState)}`
-      )
-    }
-    return c.text(`Token exchange failed: ${errText}`, 400)
+  if (!ok) {
+    console.error('Token exchange failed:', data.error, data.error_description)
+    return c.json({ success: false, error: data.error || 'Token exchange failed' }, 400)
   }
 
-  const tokenData = (await tokenRes.json()) as {
-    access_token: string
-    refresh_token?: string
-    expires_in?: number
-  }
-
-  // Fetch user profile info
   let userInfo: { email?: string; name?: string; picture?: string } = {}
   try {
-    const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+    const userRes = await fetch(GOOGLE_USERINFO_URL, {
+      headers: { Authorization: `Bearer ${data.access_token}` }
     })
     if (userRes.ok) {
-      userInfo = (await userRes.json()) as { email?: string; name?: string; picture?: string }
+      userInfo = (await userRes.json()) as typeof userInfo
     }
   } catch (e) {
     console.error('Failed to fetch userinfo:', e)
   }
 
-  const payload = {
-    accessToken: tokenData.access_token,
-    refreshToken: tokenData.refresh_token || '',
-    expiresIn: tokenData.expires_in || 3600,
+  return c.json({
+    success: true,
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token || '',
+    expiresIn: data.expires_in || 3600,
     email: userInfo.email || '',
     name: userInfo.name || '',
     picture: userInfo.picture || ''
-  }
-
-  const encodedPayload = encodeURIComponent(JSON.stringify(payload))
-  const desktopLoopbackUrl = `http://127.0.0.1:${port}/callback?token_data=${encodedPayload}&state=${encodeURIComponent(originalState)}`
-
-  // Deliver tokens to local desktop loopback and show success page
-  return c.html(`
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Connected to Google Drive - myNotes</title>
-        <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #090a0f;
-            color: #f8fafc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 24px;
-          }
-          .card {
-            background: #141721;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 24px;
-            padding: 48px 36px;
-            text-align: center;
-            max-width: 440px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-          }
-          .icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            background: rgba(59, 130, 246, 0.15);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            color: #3b82f6;
-            font-size: 36px;
-            margin-bottom: 24px;
-          }
-          h1 {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            letter-spacing: -0.02em;
-          }
-          p {
-            color: #94a3b8;
-            font-size: 14px;
-            line-height: 1.5;
-            margin-bottom: 20px;
-          }
-          .badge {
-            display: inline-block;
-            background: rgba(16, 185, 129, 0.12);
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.25);
-            border-radius: 999px;
-            padding: 4px 14px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 20px;
-          }
-          .hint {
-            color: #64748b;
-            font-size: 12px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <div class="icon">✓</div>
-          <span class="badge">Connected</span>
-          <h1>Google Drive Connected!</h1>
-          <p>
-            ${userInfo.email ? `Signed in as <strong>${userInfo.email}</strong>.<br />` : ''}
-            Your notes and attachments will now automatically sync with your private Google Drive vault.
-          </p>
-          <div class="hint">Returning to myNotes... you can close this window.</div>
-        </div>
-        <script>
-          // Send tokens directly to the local desktop app loopback server
-          fetch('${desktopLoopbackUrl}').catch(function() {
-            window.location.href = '${desktopLoopbackUrl}';
-          });
-          setTimeout(function() {
-            window.location.href = '${desktopLoopbackUrl}';
-          }, 300);
-          setTimeout(function() {
-            window.close();
-          }, 2500);
-        </script>
-      </body>
-    </html>
-  `)
+  })
 })
 
-// Step 3: Refresh access token securely using Cloudflare Worker secret
+// Step 4: Refresh access token using the Cloudflare Worker secret
 app.post('/auth/refresh', async (c) => {
-  let body: { refreshToken?: string } = {}
-  try {
-    body = await c.req.json()
-  } catch {
-    return c.json({ success: false, error: 'Invalid JSON request body' }, 400)
+  const body = await readJson<{ refreshToken?: unknown }>(c)
+  const refreshToken = body?.refreshToken
+
+  if (typeof refreshToken !== 'string' || !refreshToken || refreshToken.length > MAX_REFRESH_TOKEN_LEN) {
+    return c.json({ success: false, error: 'Invalid request' }, 400)
+  }
+  if (!isConfigured(c)) {
+    return c.json({ success: false, error: 'Auth relay is not configured' }, 500)
   }
 
-  const refreshToken = body.refreshToken
-  if (!refreshToken) {
-    return c.json({ success: false, error: 'Missing refreshToken in request body' }, 400)
-  }
-
-  if (!c.env.GOOGLE_CLIENT_ID || !c.env.GOOGLE_CLIENT_SECRET) {
-    return c.json(
-      { success: false, error: 'Server missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET' },
-      500
-    )
-  }
-
-  const params = new URLSearchParams({
+  const { ok, data } = await googleTokenRequest({
     client_id: c.env.GOOGLE_CLIENT_ID,
     client_secret: c.env.GOOGLE_CLIENT_SECRET,
     refresh_token: refreshToken,
     grant_type: 'refresh_token'
   })
 
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString()
-  })
-
-  if (!tokenRes.ok) {
-    const errText = await tokenRes.text()
-    console.error('Token refresh failed:', errText)
-    return c.json({ success: false, error: `Token refresh failed: ${errText}` }, 400)
-  }
-
-  const data = (await tokenRes.json()) as {
-    access_token: string
-    expires_in?: number
+  if (!ok) {
+    console.error('Token refresh failed:', data.error, data.error_description)
+    // `invalid_grant` means the user revoked access or the token expired: the app should prompt a re-login
+    return c.json({ success: false, error: data.error || 'Token refresh failed' }, 400)
   }
 
   return c.json({
@@ -313,6 +271,12 @@ app.post('/auth/refresh', async (c) => {
     accessToken: data.access_token,
     expiresIn: data.expires_in || 3600
   })
+})
+
+app.notFound((c) => c.json({ success: false, error: 'Not found' }, 404))
+app.onError((err, c) => {
+  console.error('Unhandled error:', err)
+  return c.json({ success: false, error: 'Internal error' }, 500)
 })
 
 export default app

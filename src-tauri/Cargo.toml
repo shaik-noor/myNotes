@@ -1,6 +1,6 @@
 [package]
 name = "mynotes"
-version = "1.0.0"
+version = "1.0.1"
 description = "myNotes - Personal Knowledge & Document Workspace"
 authors = ["Shaik"]
 edition = "2021"
@@ -17,7 +17,6 @@ tauri = { version = "2", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
-tauri-plugin-fs = "2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rusqlite = { version = "0.32", features = ["bundled"] }

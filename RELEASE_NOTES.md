@@ -1,3 +1,25 @@
+# Release Notes: myNotes v1.0.1
+
+**Release Date:** October 19, 2026
+**Type:** Security & reliability update (recommended for all users)
+**Downloads:** `myNotes_1.0.1_x64-setup.exe`, `myNotes_1.0.1_x64_en-US.msi` (Windows x64)
+
+## 🔐 Security
+- **Hardened Google sign-in relay:** Google tokens never pass through the browser anymore. The relay only forwards a one-time code bound to the app's PKCE verifier, and the app redeems it directly. This fixes a script-injection issue in the old sign-in page that could expose tokens.
+- **No client secret in the app:** release builds using the auth relay no longer embed Google OAuth credentials.
+- **Tokens are pinned to their issuer:** refresh tokens are only ever sent to the relay or client that issued them, and changing sign-in settings signs you out. Custom relay URLs must use `https://`.
+- **Locked-down webview:** a strict Content Security Policy is now enforced, and the unused filesystem plugin (which could read the app database) has been removed.
+
+## 🛠️ Fixes
+- Cloud sync no longer uploads over the cloud vault when downloading or reading it fails, which could drop edits made on other devices. Failed uploads are now reported instead of being shown as successful.
+- The sign-in toast no longer says "Connected" before you've finished signing in, and sign-in errors now show up in Settings.
+- Abandoned sign-ins time out after 5 minutes instead of leaving a local listener open.
+- Settings no longer crash on Client IDs containing non-ASCII characters.
+
+> After updating, you may be asked to sign in to Google Drive once more.
+
+---
+
 # Release Notes: myNotes v1.0.0
 
 **Release Date:** October 19, 2026  
