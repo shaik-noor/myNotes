@@ -8,7 +8,8 @@
   },
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri dev",
+    "dev:frontend": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "tauri": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri",

@@ -67,8 +67,8 @@ npm run typecheck
 # Run unit tests
 npm test
 
-# Start Tauri 2 development app (Vite + Rust dev server)
-npm run tauri:dev
+# Start Tauri 2 development desktop app (spawns Vite + compiles Rust)
+npm run dev
 
 # Build production bundle
 npm run tauri:build
