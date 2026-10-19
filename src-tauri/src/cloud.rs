@@ -14,6 +14,7 @@ use crate::types::{BackupManifest, CloudSyncConfig, CloudSyncResult};
 const DRIVE_FILES_URL: &str = "https://www.googleapis.com/drive/v3/files";
 const DRIVE_UPLOAD_URL: &str = "https://www.googleapis.com/upload/drive/v3/files";
 const VAULT_FILENAME: &str = "mynotes_vault.json";
+const GOOGLE_REVOKE_URL: &str = "https://oauth2.googleapis.com/revoke";
 
 pub struct CloudSyncManager {
     db: Arc<Database>,
@@ -211,8 +212,21 @@ impl CloudSyncManager {
         self.db.set_cloud_sync_value("autoSync", Some(if enabled { "1" } else { "0" }))
     }
 
-    pub fn logout(&self) -> Result<(), String> {
-        self.db.clear_cloud_sync()
+    pub async fn logout(&self) -> Result<(), String> {
+        let refresh_token = self.db.get_cloud_sync_value("refreshToken").ok().flatten();
+        // Clear local state first so Disconnect always works, even offline
+        self.db.clear_cloud_sync()?;
+
+        // Best effort: revoke the grant at Google too (revoking the refresh token revokes its access tokens)
+        if let Some(token) = refresh_token {
+            let _ = reqwest::Client::new()
+                .post(GOOGLE_REVOKE_URL)
+                .timeout(std::time::Duration::from_secs(10))
+                .form(&[("token", token)])
+                .send()
+                .await;
+        }
+        Ok(())
     }
 
     pub async fn start_login(self: Arc<Self>, app_handle: AppHandle) -> Result<(String, String), String> {

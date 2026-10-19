@@ -10,9 +10,23 @@ export interface ReleaseItem {
   }[]
 }
 
-export const APP_VERSION = '1.0.2'
+export const APP_VERSION = '1.0.3'
 
 export const RELEASE_HISTORY: ReleaseItem[] = [
+  {
+    version: '1.0.3',
+    date: 'October 2026',
+    title: 'Disconnect Revokes Google Access',
+    highlights: [
+      {
+        category: 'cloud',
+        badge: 'Privacy',
+        title: 'Disconnect Now Revokes Access at Google',
+        description:
+          'Disconnecting Google Drive now also revokes access to myNotes in your Google account, not just the sign-in on this device.'
+      }
+    ]
+  },
   {
     version: '1.0.2',
     date: 'October 2026',

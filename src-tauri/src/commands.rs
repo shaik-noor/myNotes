@@ -346,7 +346,7 @@ pub async fn cloud_login(
 
 #[tauri::command]
 pub async fn cloud_logout(state: State<'_, AppState>) -> Result<ResultResponse<()>, ()> {
-    match state.cloud.logout() {
+    match state.cloud.logout().await {
         Ok(_) => Ok(ResultResponse::ok_void()),
         Err(e) => Ok(ResultResponse::err(e)),
     }
