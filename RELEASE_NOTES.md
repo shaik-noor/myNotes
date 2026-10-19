@@ -1,7 +1,7 @@
 # Release Notes: myNotes v1.0.3
 
 **Release Date:** October 19, 2026
-**Downloads:** `myNotes_1.0.3_x64-setup.exe`, `myNotes_1.0.3_x64_en-US.msi` (Windows x64)
+**Downloads:** `myNotes_1.0.3_aarch64.dmg` (macOS Apple Silicon), `myNotes_1.0.3_x64-setup.exe`, `myNotes_1.0.3_x64_en-US.msi` (Windows x64)
 
 ## 🔐 Privacy
 - **Disconnect now revokes access at Google:** Settings → Cloud Sync → Disconnect removes the sign-in from this device and also revokes myNotes' access in your Google account. Local data is cleared first, so Disconnect works even when you're offline.
