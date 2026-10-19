@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import type React from 'react'
 import { RELEASE_HISTORY, APP_VERSION } from '../data/releaseNotes'
+import appIcon from '../assets/icon.png'
 import { Button } from './ui/button'
 import {
   Dialog,
@@ -40,7 +41,7 @@ export const ReleaseNotesDialog: React.FC<ReleaseNotesDialogProps> = ({
         <DialogHeader className="space-y-3">
           <div className="flex items-center gap-3">
             <img
-              src="/frontend/assets/icon.png"
+              src={appIcon}
               alt="myNotes"
               className="size-11 rounded-xl shadow-md border border-border/50 object-cover"
             />

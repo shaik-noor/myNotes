@@ -24,6 +24,7 @@ import { useEffect, useState } from 'react'
 import type { CloudSyncConfig } from '../types/notes'
 import { useTheme } from '../context/ThemeContext'
 import { useNotesStore } from '../store/useNotesStore'
+import appIcon from '../assets/icon.png'
 import type { EditorFont, Palette as PaletteType, ThemeMode } from '../types/notes'
 import { Button } from './ui/button'
 import { confirmDialog } from './ui/confirm'
@@ -835,7 +836,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               <div className="space-y-6">
                 <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-card/50 p-4">
                   <img
-                    src="/frontend/assets/icon.png"
+                    src={appIcon}
                     alt="myNotes icon"
                     className="size-14 rounded-2xl shadow-md border border-border/40 object-cover"
                   />

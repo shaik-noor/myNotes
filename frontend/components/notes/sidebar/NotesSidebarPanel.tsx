@@ -7,7 +7,6 @@ import {
   Download,
   FileText,
   Hash,
-  Home,
   MoreVertical,
   NotebookPen,
   Pin,
@@ -248,35 +247,6 @@ export function NotesSidebarPanel(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2.5 p-2 select-none">
-      {/* Top Workspace Navigation: Home */}
-      <div className="flex flex-col gap-1">
-        <button
-          type="button"
-          onClick={() => setSelectedNoteId(null)}
-          className={cn(
-            'flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all',
-            selectedNoteId === null
-              ? 'bg-notes/15 text-notes font-semibold shadow-2xs border border-notes/30'
-              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-          )}
-        >
-          <span
-            className={cn(
-              'flex size-6 items-center justify-center rounded-md transition-colors',
-              selectedNoteId === null
-                ? 'bg-notes text-notes-foreground shadow-2xs'
-                : 'bg-muted text-muted-foreground'
-            )}
-          >
-            <Home className="size-3.5" />
-          </span>
-          <span className="flex-1 text-left">Home Dashboard</span>
-          <span className="rounded bg-muted/60 px-1.5 py-0.5 text-2xs text-muted-foreground tabular-nums">
-            {notes.length}
-          </span>
-        </button>
-      </div>
-
       <div className="flex shrink-0 items-stretch overflow-hidden rounded-lg shadow-xs">
         <Button
           size="sm"

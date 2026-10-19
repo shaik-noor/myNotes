@@ -20,6 +20,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useNotesStore } from '../store/useNotesStore'
 import { NoteGlyph } from './notes/noteIcon'
 import type { SettingsTab } from './SettingsDialog'
+import appIcon from '../assets/icon.png'
 import { Button } from './ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { cn } from './ui/utils'
@@ -145,17 +146,18 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           <TooltipTrigger asChild>
             <Button
               variant={selectedNoteId === null ? 'secondary' : 'ghost'}
-              size="icon-xs"
+              size="sm"
               onClick={() => setSelectedNoteId(null)}
               className={cn(
-                'size-7 rounded-lg cursor-pointer transition-colors',
+                'h-7 px-2.5 gap-1.5 rounded-lg cursor-pointer transition-colors text-xs font-semibold',
                 selectedNoteId === null
-                  ? 'text-notes bg-notes/15 hover:bg-notes/25 shadow-2xs font-semibold'
+                  ? 'text-notes bg-notes/15 hover:bg-notes/25 shadow-2xs'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
               )}
               aria-label="Home Dashboard"
             >
               <Home className="size-3.5" />
+              <span>Home</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">Home Dashboard (⌘H)</TooltipContent>
@@ -172,7 +174,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold text-foreground/90 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer select-none"
             >
               <img
-                src="/frontend/assets/icon.png"
+                src={appIcon}
                 alt="myNotes"
                 className="size-5 rounded-md shadow-2xs object-cover"
               />

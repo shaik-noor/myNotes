@@ -23,6 +23,7 @@ import {
 import type React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import type { Note } from '../../../types/notes'
+import appIcon from '../../../assets/icon.png'
 import { Button } from '../../ui/button'
 import {
   DropdownMenu,
@@ -243,7 +244,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         <section className="relative flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-border/40 pb-7">
           <div className="flex items-start gap-4">
             <img
-              src="/frontend/assets/icon.png"
+              src={appIcon}
               alt="myNotes"
               className="size-14 sm:size-16 rounded-2xl shadow-md border border-border/40 object-cover shrink-0 hidden sm:block mt-0.5"
             />
