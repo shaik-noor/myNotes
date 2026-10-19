@@ -15,6 +15,7 @@ import {
   Palette,
   RefreshCw,
   ShieldCheck,
+  Sparkles,
   Sun,
   Upload
 } from 'lucide-react'
@@ -36,6 +37,7 @@ interface SettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialTab?: SettingsTab
+  onOpenReleaseNotes?: () => void
 }
 
 const PALETTES: { id: PaletteType; label: string; description: string; swatch: string }[] = [
@@ -96,7 +98,8 @@ const GoogleGIcon: React.FC<{ className?: string }> = ({ className = 'size-4' })
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   open,
   onOpenChange,
-  initialTab
+  initialTab,
+  onOpenReleaseNotes
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance')
   const { theme, setTheme, palette, setPalette, fontClass, setFontClass } = useTheme()
@@ -874,6 +877,21 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                       Tailwind CSS v4 &amp; Framer Motion
                     </span>
                   </div>
+                </div>
+
+                <div className="pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false)
+                      onOpenReleaseNotes?.()
+                    }}
+                    className="w-full justify-center gap-2 text-xs font-semibold hover:bg-muted cursor-pointer h-9 rounded-xl"
+                  >
+                    <Sparkles className="size-3.5 text-notes" />
+                    What's New in v1.0.0 (Release Notes)
+                  </Button>
                 </div>
               </div>
             )}

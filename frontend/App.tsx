@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { KeyboardShortcutsDialog } from './components/KeyboardShortcutsDialog'
 import { NotesView } from './components/notes/NotesView'
 import { NotesSidebarPanel } from './components/notes/sidebar/NotesSidebarPanel'
+import { ReleaseNotesDialog } from './components/ReleaseNotesDialog'
 import type { SettingsTab } from './components/SettingsDialog'
 import { SettingsDialog } from './components/SettingsDialog'
 import { TitleBar } from './components/TitleBar'
@@ -20,6 +21,7 @@ export const App: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('appearance')
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false)
   const loadNotes = useNotesStore((s) => s.loadNotes)
   const setSelectedNoteId = useNotesStore((s) => s.setSelectedNoteId)
   const createNote = useNotesStore((s) => s.createNote)
@@ -99,6 +101,7 @@ export const App: React.FC = () => {
             setSettingsOpen(true)
           }}
           onOpenShortcuts={() => setShortcutsOpen(true)}
+          onOpenReleaseNotes={() => setReleaseNotesOpen(true)}
         />
 
         {/* Main Workspace Workspace */}
@@ -127,8 +130,10 @@ export const App: React.FC = () => {
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           initialTab={settingsTab}
+          onOpenReleaseNotes={() => setReleaseNotesOpen(true)}
         />
         <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+        <ReleaseNotesDialog open={releaseNotesOpen} onOpenChange={setReleaseNotesOpen} />
 
         {/* Confirmation dialog provider */}
         <ConfirmDialog />

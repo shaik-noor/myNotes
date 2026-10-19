@@ -10,6 +10,7 @@ import {
   PanelLeftOpen,
   RefreshCw,
   Settings,
+  Sparkles,
   Sun
 } from 'lucide-react'
 import type React from 'react'
@@ -28,6 +29,7 @@ interface TitleBarProps {
   onToggleSidebar: () => void
   onOpenSettings: (tab?: SettingsTab) => void
   onOpenShortcuts: () => void
+  onOpenReleaseNotes?: () => void
 }
 
 const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
@@ -36,7 +38,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   sidebarOpen,
   onToggleSidebar,
   onOpenSettings,
-  onOpenShortcuts
+  onOpenShortcuts,
+  onOpenReleaseNotes
 }) => {
   const { theme, toggleTheme } = useTheme()
   const [cloudConfig, setCloudConfig] = useState<CloudSyncConfig | null>(null)
@@ -274,6 +277,22 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">Settings (⌘,)</TooltipContent>
+        </Tooltip>
+
+        {/* What's New / Release Notes */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={onOpenReleaseNotes}
+              className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer"
+              aria-label="What's New in v1.0.0"
+            >
+              <Sparkles className="size-3.5 text-amber-500/80 hover:text-amber-500" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">What's New in v1.0.0</TooltipContent>
         </Tooltip>
       </div>
     </div>
