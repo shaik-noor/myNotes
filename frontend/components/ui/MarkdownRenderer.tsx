@@ -1,7 +1,9 @@
+// biome-ignore-all lint/suspicious/noArrayIndexKey: Parsed text tokens use source positions because they have no persistent IDs.
 import type { Element as HastElement, Root as HastRoot, RootContent } from 'hast'
 import { common, createLowlight } from 'lowlight'
 import { Check, Copy } from 'lucide-react'
 import React, { useMemo } from 'react'
+import { externalLink } from '../../services/links'
 import { toast } from './toast'
 import { cn } from './utils'
 
@@ -233,7 +235,8 @@ const parseInlineMarkdown = (text: string, compact = false): React.ReactNode[] =
     } else if (token.startsWith('[') && token.includes('](') && token.endsWith(')')) {
       const closeBracketIdx = token.indexOf('](')
       const linkText = token.slice(1, closeBracketIdx)
-      const url = token.slice(closeBracketIdx + 2, -1)
+      const url = externalLink(token.slice(closeBracketIdx + 2, -1))
+      if (!url) return linkText
       return (
         <a
           key={i}
@@ -503,7 +506,7 @@ const MarkdownRendererImpl: React.FC<MarkdownRendererProps> = ({
 
         if (bulletMatch || orderedMatch) {
           const type = bulletMatch ? 'bullet' : 'ordered'
-          const itemContent = bulletMatch ? trimmed.slice(2) : orderedMatch![2]
+          const itemContent = bulletMatch ? trimmed.slice(2) : (orderedMatch?.[2] ?? '')
 
           if (listType && listType !== type) {
             flushList(idx)

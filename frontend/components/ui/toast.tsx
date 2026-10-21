@@ -68,9 +68,9 @@ export const Toaster: React.FC = () => {
         {toasts.map((t) => (
           <motion.div
             key={t.id}
-            initial={{ opacity: 0, y: 12, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95, y: -8 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.18 }}
             className="pointer-events-auto flex items-start gap-3 rounded-xl border border-border/80 bg-popover/95 p-3.5 shadow-xl backdrop-blur-xl text-popover-foreground"
           >

@@ -29,7 +29,9 @@ export const NoteAttachmentsPanel: React.FC<NoteAttachmentsPanelProps> = ({ note
           setFiles(list)
           if (autoExpand) setIsOpen(list.length > 0)
         })
-        .catch(() => setFiles([]))
+        .catch(() =>
+          toast.error('Could not load attachments', { description: 'Try opening this page again.' })
+        )
         .finally(() => setLoading(false))
     },
     [noteId]

@@ -12,12 +12,8 @@ import type {
   Result
 } from './types/notes'
 
-export interface StreamEvent {
-  type: 'start' | 'chunk' | 'done' | 'error' | 'canceled'
-  text?: string
-  accumulated?: string
-  error?: string
-}
+// Serialize full-vault writes so an older snapshot cannot finish after a newer one.
+let notesSaveQueue: Promise<unknown> = Promise.resolve()
 
 export const tauriApi = {
   storage: {
@@ -60,17 +56,19 @@ export const tauriApi = {
       return invoke<Result<Note[]>>('notes_load')
     },
     save: async (notesList: unknown[]): Promise<Result> => {
-      return invoke<Result>('notes_save', { notesList })
+      const request = notesSaveQueue.then(() => invoke<Result>('notes_save', { notesList }))
+      notesSaveQueue = request.catch(() => undefined)
+      return request
     },
     importLocalFile: async (): Promise<NoteImportResult | null> => {
       const selected = await openDialog({
-        title: 'Import Notes (OneNote, HTML, TXT, Markdown)',
+        title: 'Import notes',
         multiple: false,
         directory: false,
         filters: [
           {
             name: 'Note Files',
-            extensions: ['one', 'onex', 'onepkg', 'txt', 'md', 'markdown', 'html', 'htm']
+            extensions: ['txt', 'md', 'markdown', 'html', 'htm']
           },
           { name: 'All Files', extensions: ['*'] }
         ]
@@ -78,10 +76,10 @@ export const tauriApi = {
       if (!selected) return null
       const filePath = typeof selected === 'string' ? selected : selected[0]
       const res = await invoke<Result<NoteImportResult>>('notes_import_local_file', { filePath })
-      if (res && res.success && res.data) {
+      if (res?.success && res.data) {
         return res.data
       }
-      if (res && res.error) {
+      if (res?.error) {
         return { error: res.error }
       }
       return null
@@ -92,12 +90,15 @@ export const tauriApi = {
       prevSiblingSortKey: string | null,
       nextSiblingSortKey: string | null
     ): Promise<Result<{ id: string; parentId: string | null; sortKey: string }>> => {
-      return invoke<Result<{ id: string; parentId: string | null; sortKey: string }>>('notes_move', {
-        id,
-        newParentId,
-        prevSiblingSortKey,
-        nextSiblingSortKey
-      })
+      return invoke<Result<{ id: string; parentId: string | null; sortKey: string }>>(
+        'notes_move',
+        {
+          id,
+          newParentId,
+          prevSiblingSortKey,
+          nextSiblingSortKey
+        }
+      )
     },
     getBacklinks: async (noteId: string): Promise<Result<BacklinkItem[]>> => {
       return invoke<Result<BacklinkItem[]>>('notes_get_backlinks', { noteId })
@@ -202,35 +203,6 @@ export const tauriApi = {
     },
     isMaximized: async (): Promise<boolean> => {
       return invoke<boolean>('window_is_maximized')
-    }
-  },
-
-  ai: {
-    chatCompletionStream: async (
-      streamId: string,
-      systemPrompt: string,
-      messages: { role: string; content: string }[]
-    ): Promise<Result> => {
-      return invoke<Result>('ai_chat_completion_stream', {
-        streamId,
-        systemPrompt,
-        messages
-      })
-    },
-    onStreamEvent: (streamId: string, callback: (event: StreamEvent) => void): (() => void) => {
-      const channel = `ai:stream:${streamId}`
-      let unlistenFn: (() => void) | null = null
-      listen<StreamEvent>(channel, (event) => {
-        callback(event.payload)
-      }).then((unsub) => {
-        unlistenFn = unsub
-      })
-      return () => {
-        if (unlistenFn) unlistenFn()
-      }
-    },
-    cancelStream: async (streamId: string): Promise<Result> => {
-      return invoke<Result>('ai_cancel_stream', { streamId })
     }
   },
 

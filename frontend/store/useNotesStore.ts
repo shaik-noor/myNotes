@@ -3,6 +3,23 @@ import { confirmDialog } from '../components/ui/confirm'
 import { toast } from '../components/ui/toast'
 import type { BacklinkItem, Note, NoteTreeNode } from '../types/notes'
 
+async function persistNotes(notes: Note[]): Promise<boolean> {
+  if (useNotesStore.getState().notesLoadError) {
+    toast.error('Load your notes before making changes')
+    return false
+  }
+  try {
+    const result = await window.api.notes.save(notes)
+    if (!result.success) throw new Error(result.error || 'Could not save your changes')
+    return true
+  } catch (error) {
+    toast.error('Changes could not be saved', {
+      description: error instanceof Error ? error.message : 'Please try again.'
+    })
+    return false
+  }
+}
+
 export type { BacklinkItem, Note, NoteTreeNode }
 
 export function getAncestors(
@@ -10,7 +27,7 @@ export function getAncestors(
   noteId: string
 ): Array<{ id: string; title: string; icon?: string | null }> {
   const note = notes.find((n) => n.id === noteId)
-  if (!note || !note.parentId) return []
+  if (!note?.parentId) return []
 
   const chain: Array<{ id: string; title: string; icon?: string | null }> = []
   const visited = new Set<string>()
@@ -33,7 +50,7 @@ export function getDescendantIds(notes: Note[], noteId: string): string[] {
   const visited = new Set<string>([noteId])
 
   while (queue.length > 0) {
-    const parentId = queue.shift()!
+    const parentId = queue.shift()
     for (const note of notes) {
       if (note.parentId === parentId && !visited.has(note.id)) {
         visited.add(note.id)
@@ -57,9 +74,11 @@ export function buildNoteTree(notes: Note[]): NoteTreeNode[] {
 
   // Nest children
   for (const n of notes) {
-    const node = map.get(n.id)!
-    if (n.parentId && map.has(n.parentId)) {
-      map.get(n.parentId)!.children.push(node)
+    const node = map.get(n.id)
+    if (!node) continue
+    const parent = n.parentId ? map.get(n.parentId) : undefined
+    if (parent) {
+      parent.children.push(node)
     } else {
       roots.push(node)
     }
@@ -102,6 +121,7 @@ export function buildNoteTree(notes: Note[]): NoteTreeNode[] {
 interface NotesState {
   notes: Note[]
   notesLoaded: boolean
+  notesLoadError: string | null
   selectedNoteId: string | null
   notesSearchQuery: string
   expandedNoteIds: Set<string>
@@ -123,7 +143,7 @@ interface NotesState {
   ) => Promise<string>
   createChildPage: (parentId: string, initialTitle?: string) => Promise<string>
   createLinkedChildPage: (title: string, parentId: string) => Promise<string>
-  updateNote: (id: string, updates: Partial<Note>) => Promise<void>
+  updateNote: (id: string, updates: Partial<Note>) => Promise<boolean>
   deleteNote: (id: string) => Promise<void>
   deleteNotes: (ids: string[], skipConfirm?: boolean) => Promise<void>
   duplicateNote: (id: string) => Promise<string | null>
@@ -146,6 +166,7 @@ interface NotesState {
 export const useNotesStore = create<NotesState>((set, get) => ({
   notes: [],
   notesLoaded: false,
+  notesLoadError: null,
   selectedNoteId: null,
   notesSearchQuery: '',
   expandedNoteIds: new Set<string>(),
@@ -157,7 +178,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       const res = await window.api?.notes?.load?.()
       if (res?.success && Array.isArray(res.data)) {
         const list = res.data
-        set({ notes: list, notesLoaded: true })
+        set({ notes: list, notesLoaded: true, notesLoadError: null })
 
         // Check if there is a saved note preference or resume state
         const savedNoteId = localStorage.getItem('mynotes:active-note-id')
@@ -167,11 +188,11 @@ export const useNotesStore = create<NotesState>((set, get) => ({
           get().setSelectedNoteId(null)
         }
       } else {
-        set({ notesLoaded: true })
+        set({ notesLoaded: true, notesLoadError: res?.error || 'Could not load your notes' })
       }
     } catch (e) {
       console.error('Failed to load notes:', e)
-      set({ notesLoaded: true })
+      set({ notesLoaded: true, notesLoadError: 'Could not load your notes. Please try again.' })
     }
   },
 
@@ -230,7 +251,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     options?: { icon?: string; tags?: string[] }
   ) => {
     const now = new Date().toISOString()
-    const id = Math.random().toString(36).slice(2, 10)
+    const id = crypto.randomUUID()
     const newNote: Note = {
       id,
       title: initialTitle,
@@ -248,7 +269,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       get().setNoteExpanded(initialParentId, true)
     }
 
-    await window.api?.notes?.save?.(updated)
+    if (!(await persistNotes(updated))) return ''
     return id
   },
 
@@ -263,43 +284,40 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   updateNote: async (id, updates) => {
     const notes = get().notes
     const idx = notes.findIndex((n) => n.id === id)
-    if (idx === -1) return
+    if (idx === -1) return false
 
     const now = new Date().toISOString()
     const updated = [...notes]
     updated[idx] = { ...updated[idx], ...updates, updatedAt: now }
 
     set({ notes: updated })
-    await window.api?.notes?.save?.(updated)
+    return persistNotes(updated)
   },
 
   deleteNote: async (id) => {
-    const { notes, selectedNoteId } = get()
-    const note = notes.find((n) => n.id === id)
+    const note = get().notes.find((item) => item.id === id)
     if (!note) return
-
-    const descendants = getDescendantIds(notes, id)
-    if (descendants.length > 0) {
-      const ok = await confirmDialog({
-        title: 'Delete book and sub-pages?',
-        description: `"${note.title || 'Untitled'}" and its ${descendants.length} sub-page(s) will be permanently deleted.`,
-        confirmText: 'Delete All',
-        destructive: true
-      })
-      if (!ok) return
-    }
-
-    const removeIds = new Set([id, ...descendants])
-    const updated = notes.filter((n) => !removeIds.has(n.id))
-    let nextSelectedId = selectedNoteId
-    if (selectedNoteId && removeIds.has(selectedNoteId)) {
-      nextSelectedId = updated.length > 0 ? updated[0].id : null
-    }
-
+    const count = getDescendantIds(get().notes, id).length
+    const ok = await confirmDialog({
+      title: count ? 'Delete notebook and pages?' : 'Delete page?',
+      description: count
+        ? `"${note.title || 'Untitled'}" and ${count} child pages will be permanently deleted.`
+        : `"${note.title || 'Untitled'}" will be permanently deleted.`,
+      confirmText: 'Delete',
+      destructive: true
+    })
+    if (!ok) return
+    const { notes, selectedNoteId } = get()
+    const removeIds = new Set([id, ...getDescendantIds(notes, id)])
+    const updated = notes.filter((item) => !removeIds.has(item.id))
+    const nextSelectedId =
+      selectedNoteId && removeIds.has(selectedNoteId) ? (updated[0]?.id ?? null) : selectedNoteId
     set({ notes: updated, selectedNoteId: nextSelectedId })
-    await window.api?.notes?.save?.(updated)
-
-    toast.success('Note deleted')
+    if (!(await persistNotes(updated))) {
+      if (get().notes === updated) set({ notes, selectedNoteId })
+      return
+    }
+    toast.success('Page deleted')
   },
 
   deleteNotes: async (ids, skipConfirm = false) => {
@@ -328,7 +346,10 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
 
     set({ notes: updated, selectedNoteId: nextSelectedId })
-    await window.api?.notes?.save?.(updated)
+    if (!(await persistNotes(updated))) {
+      if (get().notes === updated) set({ notes, selectedNoteId })
+      return
+    }
 
     toast.success(`Deleted ${allIds.size} note(s)`)
   },
@@ -339,7 +360,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     if (!note) return null
 
     const now = new Date().toISOString()
-    const newId = Math.random().toString(36).slice(2, 10)
+    const newId = crypto.randomUUID()
     const copy: Note = {
       ...note,
       id: newId,
@@ -352,7 +373,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const updated = [...notes.slice(0, idx + 1), copy, ...notes.slice(idx + 1)]
 
     set({ notes: updated, selectedNoteId: newId })
-    await window.api?.notes?.save?.(updated)
+    if (!(await persistNotes(updated))) return null
     toast.success('Note duplicated')
     return newId
   },
@@ -363,7 +384,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     if (!note) return
 
     const nextPinned = !note.pinned
-    await get().updateNote(id, { pinned: nextPinned ? true : undefined })
+    if (!(await get().updateNote(id, { pinned: nextPinned ? true : undefined }))) return
     toast.success(nextPinned ? 'Pinned to top' : 'Unpinned')
   },
 
@@ -395,7 +416,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   importNote: async (title, content, parentId = null) => {
     const now = new Date().toISOString()
-    const id = Math.random().toString(36).slice(2, 10)
+    const id = crypto.randomUUID()
     const note: Note = {
       id,
       title: title || 'Untitled Note',
@@ -411,7 +432,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       get().setNoteExpanded(parentId, true)
     }
 
-    await window.api?.notes?.save?.(updated)
+    if (!(await persistNotes(updated))) return ''
     return id
   },
 

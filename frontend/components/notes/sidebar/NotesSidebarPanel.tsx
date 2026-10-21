@@ -7,6 +7,7 @@ import {
   Download,
   FileText,
   Hash,
+  Home,
   MoreVertical,
   NotebookPen,
   Pin,
@@ -39,9 +40,9 @@ import { cn } from '../../ui/utils'
 import { NoteGlyph } from '../noteIcon'
 import { NoteTreeRow, SelectBox } from './NoteTreeRow'
 
-type NotesTab = 'all' | 'books' | 'notes'
+type NotesTab = 'all' | 'books'
 
-const SECTION_LABEL = 'text-2xs font-bold uppercase tracking-wider text-muted-foreground'
+const SECTION_LABEL = 'text-xs font-medium text-muted-foreground'
 
 export function shortAge(iso?: string): string {
   if (!iso) return ''
@@ -69,8 +70,8 @@ export function useNoteCreation(): {
   const [importing, setImporting] = useState(false)
 
   const newBook = async (): Promise<void> => {
-    const parentId = await createNote('Untitled Book')
-    if (parentId) await createChildPage(parentId, 'Untitled Page')
+    const parentId = await createNote('Untitled notebook')
+    if (parentId) await createChildPage(parentId, 'Untitled page')
   }
 
   const handleImport = async (): Promise<void> => {
@@ -92,13 +93,14 @@ export function useNoteCreation(): {
         let bookId: string | null = null
         if (result.pages.length > 1) {
           bookId = await importNote(result.notebookTitle || 'Imported Notebook', '')
+          if (!bookId) return
         }
         for (const page of result.pages) {
-          await importNote(page.title, page.content, bookId)
+          if (!(await importNote(page.title, page.content, bookId))) return
         }
         toast.success(`Imported ${result.pages.length} pages${bookId ? ' into a new Book' : ''}`)
       } else if (result.type === 'single') {
-        await importNote(result.title || 'Untitled Note', result.content || '')
+        if (!(await importNote(result.title || 'Untitled Note', result.content || ''))) return
         toast.success('Note imported')
       }
     } catch (e: unknown) {
@@ -111,7 +113,7 @@ export function useNoteCreation(): {
   return { newNote: () => void createNote(), newBook, importing, handleImport }
 }
 
-export function NotesSidebarPanel(): React.JSX.Element {
+export function NotesSidebarPanel({ onNavigate }: { onNavigate?: () => void }): React.JSX.Element {
   const notes = useNotesStore((s) => s.notes)
   const notesLoaded = useNotesStore((s) => s.notesLoaded)
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId)
@@ -147,11 +149,6 @@ export function NotesSidebarPanel(): React.JSX.Element {
     () => notes.filter((n) => parentIds.has(n.id)).length,
     [notes, parentIds]
   )
-  const standaloneCount = useMemo(
-    () => notes.filter((n) => !n.parentId && !parentIds.has(n.id)).length,
-    [notes, parentIds]
-  )
-
   const allTags = useMemo(() => {
     const set = new Set<string>()
     for (const n of notes) for (const t of n.tags ?? []) set.add(t)
@@ -179,15 +176,11 @@ export function NotesSidebarPanel(): React.JSX.Element {
 
   const displayedNoteTree = useMemo(() => {
     if (notesTab === 'books') return noteTree.filter((node) => node.children.length > 0)
-    if (notesTab === 'notes') return noteTree.filter((node) => node.children.length === 0)
     return noteTree
   }, [noteTree, notesTab])
 
   const displayedFilteredNotes = useMemo(() => {
     if (notesTab === 'books') return filteredNotes.filter((n) => parentIds.has(n.id))
-    if (notesTab === 'notes') {
-      return filteredNotes.filter((n) => !n.parentId && !parentIds.has(n.id))
-    }
     return filteredNotes
   }, [filteredNotes, notesTab, parentIds])
 
@@ -224,8 +217,7 @@ export function NotesSidebarPanel(): React.JSX.Element {
 
   const tabs: { id: NotesTab; label: string; count: number }[] = [
     { id: 'all', label: 'All', count: notes.length },
-    { id: 'books', label: 'Books', count: booksCount },
-    { id: 'notes', label: 'Notes', count: standaloneCount }
+    { id: 'books', label: 'Notebooks', count: booksCount }
   ]
 
   if (!notesLoaded && notes.length === 0) {
@@ -246,12 +238,29 @@ export function NotesSidebarPanel(): React.JSX.Element {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2.5 p-2 select-none">
-      <div className="flex shrink-0 items-stretch overflow-hidden rounded-lg shadow-xs">
+    <div className="flex h-full min-h-0 flex-col gap-3 p-3 select-none">
+      <button
+        type="button"
+        aria-current={!selectedNoteId ? 'page' : undefined}
+        onClick={() => {
+          setSelectedNoteId(null)
+          onNavigate?.()
+        }}
+        className={cn(
+          'flex h-9 shrink-0 items-center gap-2.5 rounded-lg px-3 text-sm transition-colors',
+          !selectedNoteId
+            ? 'bg-notes/10 font-medium text-notes'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
+      >
+        <Home className="size-4" />
+        Home
+      </button>
+      <div className="flex shrink-0 items-stretch overflow-hidden rounded-lg border border-border">
         <Button
           size="sm"
           onClick={newNote}
-          className="h-8 flex-1 cursor-pointer justify-start gap-1.5 rounded-r-none bg-notes px-3 text-xs font-semibold text-notes-foreground hover:bg-notes/90"
+          className="h-9 flex-1 cursor-pointer justify-start gap-2 rounded-r-none bg-card px-3 text-sm font-medium text-foreground hover:bg-muted"
         >
           <Plus className="size-4 stroke-[2.5]" />
           New page
@@ -261,7 +270,7 @@ export function NotesSidebarPanel(): React.JSX.Element {
             <Button
               size="sm"
               aria-label="More create options"
-              className="h-8 w-8 cursor-pointer rounded-l-none border-l border-notes-foreground/20 bg-notes px-0 text-notes-foreground hover:bg-notes/90"
+              className="h-9 w-9 cursor-pointer rounded-l-none border-l border-border bg-card px-0 text-muted-foreground hover:bg-muted"
             >
               <ChevronDown className="size-3.5" />
             </Button>
@@ -270,28 +279,32 @@ export function NotesSidebarPanel(): React.JSX.Element {
             <CreateMenuItem
               icon={FileText}
               title="New page"
-              hint="A standalone note"
+              hint="A place to write"
               onSelect={newNote}
             />
             <CreateMenuItem
               icon={BookOpen}
               tone="text-notes"
-              title="New book"
-              hint="A notebook that holds sub-pages"
+              title="New notebook"
+              hint="Keep related pages together"
               onSelect={() => void newBook()}
             />
             <CreateMenuItem
               icon={Sparkles}
               tone="text-amber-500"
               title="From template…"
-              hint="Meeting, Project, Journal & more"
-              onSelect={() => setSelectedNoteId(null)}
+              hint="Meetings, projects, and more"
+              onSelect={() => {
+                setSelectedNoteId(null)
+                onNavigate?.()
+                requestAnimationFrame(() => window.dispatchEvent(new Event('notes:open-templates')))
+              }}
             />
             <DropdownMenuSeparator />
             <CreateMenuItem
               icon={Download}
               title="Import…"
-              hint="OneNote, Markdown, HTML or TXT"
+              hint="Markdown, HTML, or text"
               onSelect={() => void handleImport()}
             />
           </DropdownMenuContent>
@@ -303,7 +316,7 @@ export function NotesSidebarPanel(): React.JSX.Element {
           compact
           icon={NotebookPen}
           title="Your library is empty"
-          description="Create a page or a book, or import from OneNote."
+          description="Create a page or notebook, or import a file."
         />
       ) : (
         <>
@@ -318,9 +331,9 @@ export function NotesSidebarPanel(): React.JSX.Element {
                   setNotesSearchQuery('')
                 }
               }}
-              placeholder="Search titles & content…"
+              placeholder="Find a page"
               aria-label="Search notes"
-              className="h-8 w-full rounded-lg border border-border/60 bg-background/80 pl-8 pr-7 text-xs text-foreground shadow-2xs placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-notes/50"
+              className="h-9 w-full rounded-lg border border-border bg-background pl-8 pr-7 text-xs text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-notes/50"
             />
             {notesSearchQuery && (
               <button
@@ -375,24 +388,19 @@ export function NotesSidebarPanel(): React.JSX.Element {
           </div>
 
           {allTags.length > 0 && (
-            <div className="flex shrink-0 flex-col gap-1.5">
-              <div className="flex items-center justify-between px-1">
-                <span className={SECTION_LABEL}>Tags</span>
-                {activeTag ? (
-                  <button
-                    type="button"
-                    onClick={() => setActiveTag(null)}
-                    className="flex cursor-pointer items-center gap-0.5 text-2xs font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="size-2.5" />
-                    Clear
-                  </button>
-                ) : (
-                  <span className="text-2xs font-medium tabular-nums text-muted-foreground">
-                    {allTags.length}
-                  </span>
-                )}
-              </div>
+            <details className="shrink-0 rounded-lg px-1 text-xs">
+              <summary className="cursor-pointer py-1.5 font-medium text-muted-foreground">
+                Tags {activeTag ? `· ${activeTag}` : `· ${allTags.length}`}
+              </summary>
+              {activeTag && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTag(null)}
+                  className="mb-2 text-notes"
+                >
+                  Clear tag filter
+                </button>
+              )}
               <div className="flex max-h-16 flex-wrap gap-1 overflow-y-auto no-scrollbar">
                 {allTags.map((tag) => {
                   const active = activeTag === tag
@@ -415,19 +423,13 @@ export function NotesSidebarPanel(): React.JSX.Element {
                   )
                 })}
               </div>
-            </div>
+            </details>
           )}
 
           <div className="flex min-h-0 flex-1 flex-col gap-1.5">
             <div className="flex h-5 items-center justify-between px-1">
               <span className={SECTION_LABEL}>
-                {showTree
-                  ? notesTab === 'books'
-                    ? 'Books'
-                    : notesTab === 'notes'
-                      ? 'Notes'
-                      : 'Pages'
-                  : 'Results'}
+                {showTree ? (notesTab === 'books' ? 'Notebooks' : 'Pages') : 'Results'}
               </span>
               <div className="flex items-center gap-1.5">
                 <span className="text-2xs font-medium tabular-nums text-muted-foreground">
@@ -493,11 +495,11 @@ export function NotesSidebarPanel(): React.JSX.Element {
                     <EmptyState
                       compact
                       icon={notesTab === 'books' ? BookOpen : FileText}
-                      title={notesTab === 'books' ? 'No books yet' : 'No standalone notes'}
+                      title={notesTab === 'books' ? 'No notebooks yet' : 'No standalone notes'}
                       description={
                         notesTab === 'books'
-                          ? 'A book is any page with sub-pages — use + on a page to add one.'
-                          : 'Every page here belongs to a book.'
+                          ? 'Add a child page to turn a page into a notebook.'
+                          : 'Your pages are organized into notebooks.'
                       }
                     />
                   ) : (
@@ -510,7 +512,10 @@ export function NotesSidebarPanel(): React.JSX.Element {
                         expandedNoteIds={expandedNoteIds}
                         isSelectMode={isSelectMode}
                         checkedIds={checkedIds}
-                        onSelectNote={setSelectedNoteId}
+                        onSelectNote={(id) => {
+                          setSelectedNoteId(id)
+                          onNavigate?.()
+                        }}
                         onToggleExpanded={toggleNoteExpanded}
                         onCreateChild={createChildPage}
                         onToggleCheck={toggleCheck}

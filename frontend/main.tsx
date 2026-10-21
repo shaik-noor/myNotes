@@ -1,20 +1,26 @@
 import './tauriBridge'
 import React from 'react'
+import { MotionConfig } from 'framer-motion'
 import ReactDOM from 'react-dom/client'
 import { App } from './App'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
-import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './context/ThemeContext'
 import './assets/main.css'
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <ThemeProvider>
-        <TooltipProvider delayDuration={200}>
-          <App />
-        </TooltipProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
-  </React.StrictMode>
-)
+async function startApp(): Promise<void> {
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview')) {
+    await import('./tests/fixtures/browserPreview')
+  }
+  ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+    <React.StrictMode>
+      <MotionConfig reducedMotion="user">
+        <ErrorBoundary>
+          <ThemeProvider>
+            <App />
+          </ThemeProvider>
+        </ErrorBoundary>
+      </MotionConfig>
+    </React.StrictMode>
+  )
+}
+void startApp()

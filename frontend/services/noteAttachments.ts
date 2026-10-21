@@ -35,7 +35,8 @@ export class NoteAttachmentsService {
 
   static async list(noteId: string): Promise<NoteAttachment[]> {
     const res = await window.api.notes.listAttachments(noteId)
-    return res.success && res.data ? res.data : []
+    if (!res.success) throw new Error(res.error || 'Could not load attachments')
+    return res.data ?? []
   }
 
   static async getAttachmentDataUrl(id: string): Promise<{ mime: string; dataUrl: string } | null> {

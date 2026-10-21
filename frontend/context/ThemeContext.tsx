@@ -8,7 +8,6 @@ interface ThemeContextValue {
   fontClass: EditorFont
   fullWidthDefault: boolean
   setTheme: (theme: ThemeMode) => void
-  toggleTheme: () => void
   setPalette: (palette: Palette) => void
   setFontClass: (font: EditorFont) => void
   setFullWidthDefault: (fw: boolean) => void
@@ -28,7 +27,6 @@ const ThemeContext = createContext<ThemeContextValue>({
   fontClass: 'font-sans-editor',
   fullWidthDefault: false,
   setTheme: () => {},
-  toggleTheme: () => {},
   setPalette: () => {},
   setFontClass: () => {},
   setFullWidthDefault: () => {}
@@ -41,11 +39,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Hydrate settings
   useEffect(() => {
-    window.api?.app?.getSettings?.()?.then?.((res) => {
-      if (res?.success && res?.data) {
-        setSettings(res.data)
-      }
-    })
+    window.api?.app
+      ?.getSettings?.()
+      ?.then?.((res) => {
+        if (res?.success && res?.data) {
+          setSettings(res.data)
+        }
+      })
+      .catch(() => {
+        /* Keep default preferences when the native store is unavailable. */
+      })
   }, [])
 
   // Apply theme & palette to DOM
@@ -53,29 +56,22 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const root = document.documentElement
     const body = document.body
 
-    const isDark =
-      settings.theme === 'dark' ||
-      (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-
-    if (isDark) {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
+    const applyTheme = (): void => {
+      root.classList.toggle(
+        'dark',
+        settings.theme === 'dark' || (settings.theme === 'system' && systemTheme.matches)
+      )
     }
-
+    applyTheme()
+    systemTheme.addEventListener('change', applyTheme)
     body.setAttribute('data-palette', settings.palette)
+    return () => systemTheme.removeEventListener('change', applyTheme)
   }, [settings.theme, settings.palette])
 
   const setTheme = (theme: ThemeMode): void => {
     setSettings((s) => ({ ...s, theme }))
     window.api?.app?.saveSettings?.({ theme })
-  }
-
-  const toggleTheme = (): void => {
-    const isDark =
-      settings.theme === 'dark' ||
-      (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    setTheme(isDark ? 'light' : 'dark')
   }
 
   const setPalette = (palette: Palette): void => {
@@ -101,7 +97,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         fontClass: settings.fontClass,
         fullWidthDefault: settings.fullWidthDefault,
         setTheme,
-        toggleTheme,
         setPalette,
         setFontClass,
         setFullWidthDefault

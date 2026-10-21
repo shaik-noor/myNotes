@@ -90,5 +90,3 @@ export interface CloudSyncResult {
   downloaded: boolean
   timestamp: string
 }
-
-export const DEFAULT_CHAT_MODEL = 'claude-opus-5-5'

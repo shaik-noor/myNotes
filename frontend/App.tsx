@@ -1,43 +1,51 @@
 import type React from 'react'
 import { useEffect, useState } from 'react'
-import { KeyboardShortcutsDialog } from './components/KeyboardShortcutsDialog'
 import { NotesView } from './components/notes/NotesView'
 import { NotesSidebarPanel } from './components/notes/sidebar/NotesSidebarPanel'
-import { ReleaseNotesDialog } from './components/ReleaseNotesDialog'
 import type { SettingsTab } from './components/SettingsDialog'
 import { SettingsDialog } from './components/SettingsDialog'
 import { TitleBar } from './components/TitleBar'
+import { DialogDescription, DialogTitle } from './components/ui/dialog'
+import { Sheet, SheetContent } from './components/ui/sheet'
+import { useMediaQuery } from './components/ui/useMediaQuery'
 import { ConfirmDialog } from './components/ui/confirm'
 import { PanelResizeHandle } from './components/ui/PanelResizeHandle'
 import { Toaster } from './components/ui/toast'
 import { TooltipProvider } from './components/ui/tooltip'
 import { useResizablePanel } from './components/ui/useResizablePanel'
 import { cn } from './components/ui/utils'
-import { useTheme } from './context/ThemeContext'
 import { useNotesStore } from './store/useNotesStore'
 
 export const App: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const compact = useMediaQuery('(max-width: 899px)')
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => !window.matchMedia('(max-width: 899px)').matches
+  )
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('appearance')
-  const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false)
   const loadNotes = useNotesStore((s) => s.loadNotes)
   const setSelectedNoteId = useNotesStore((s) => s.setSelectedNoteId)
   const createNote = useNotesStore((s) => s.createNote)
-  const { fontClass } = useTheme()
+  const selectedNoteId = useNotesStore((s) => s.selectedNoteId)
 
   const {
     width: sidebarWidth,
     isDragging,
     onHandleMouseDown
   } = useResizablePanel({
-    initial: 280,
+    initial: 256,
     min: 220,
-    max: 440,
+    max: 360,
     storageKey: 'mynotes:sidebar-width',
     edge: 'right'
   })
+
+  useEffect(() => {
+    if (compact) setSidebarOpen(false)
+  }, [compact])
+  useEffect(() => {
+    if (compact && selectedNoteId) setSidebarOpen(false)
+  }, [compact, selectedNoteId])
 
   useEffect(() => {
     loadNotes()
@@ -62,18 +70,19 @@ export const App: React.FC = () => {
       } else if (key === 'n') {
         e.preventDefault()
         if (e.shiftKey) {
-          void createNote('Untitled Book').then((id) => {
-            if (id) void createNote('Untitled Page', id)
+          void createNote('Untitled notebook').then((id) => {
+            if (id) void createNote('Untitled page', id)
           })
         } else {
-          void createNote('Untitled Page')
+          void createNote('Untitled page')
         }
       } else if (key === ',') {
         e.preventDefault()
         setSettingsOpen(true)
       } else if (key === '/' || key === '?') {
         e.preventDefault()
-        setShortcutsOpen((v) => !v)
+        setSettingsTab('shortcuts')
+        setSettingsOpen(true)
       } else if (key === '\\') {
         e.preventDefault()
         setSidebarOpen((v) => !v)
@@ -88,57 +97,75 @@ export const App: React.FC = () => {
     <TooltipProvider delayDuration={200}>
       <div
         className={cn(
-          'flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground select-none',
-          fontClass
+          'workspace-enter flex flex-col h-full w-full overflow-hidden bg-background text-foreground select-none',
+          'font-sans'
         )}
       >
-        {/* macOS hiddenInset title bar */}
         <TitleBar
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          onOpenSettings={(tab) => {
-            if (tab) setSettingsTab(tab)
+          onOpenSettings={() => {
             setSettingsOpen(true)
           }}
-          onOpenShortcuts={() => setShortcutsOpen(true)}
-          onOpenReleaseNotes={() => setReleaseNotesOpen(true)}
         />
 
-        {/* Main Workspace Workspace */}
         <div className="flex flex-1 min-h-0 overflow-hidden relative">
-          {/* Sidebar */}
-          {sidebarOpen && (
+          {compact ? (
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetContent
+                side="left"
+                id="notes-navigation"
+                className="w-[min(320px,88vw)] max-w-none gap-0 overflow-hidden bg-sidebar p-0"
+              >
+                <DialogTitle className="sr-only">Your pages</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Find a page or create a new one.
+                </DialogDescription>
+                <NotesSidebarPanel onNavigate={() => setSidebarOpen(false)} />
+              </SheetContent>
+            </Sheet>
+          ) : (
             <aside
-              style={{ width: sidebarWidth }}
-              className="relative h-full shrink-0 border-r border-border/50 bg-sidebar/50 backdrop-blur-xl flex flex-col min-h-0 overflow-hidden"
+              id="notes-navigation"
+              aria-label="Page navigation"
+              aria-hidden={!sidebarOpen}
+              inert={!sidebarOpen}
+              style={{
+                width: sidebarOpen ? sidebarWidth : 0,
+                transition: isDragging ? 'none' : undefined
+              }}
+              className="edge-dock relative h-full min-h-0 shrink-0 overflow-hidden bg-sidebar"
             >
-              <NotesSidebarPanel />
-              <div className="absolute right-0 top-0 h-full w-2 translate-x-1/2 z-20">
-                <PanelResizeHandle onMouseDown={onHandleMouseDown} isDragging={isDragging} />
+              <div
+                className="edge-dock-content relative flex h-full min-h-0 flex-col border-r border-border"
+                data-open={sidebarOpen}
+                style={{
+                  width: sidebarWidth,
+                  transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+                  transition: isDragging ? 'none' : undefined
+                }}
+              >
+                <NotesSidebarPanel />
+                <div className="absolute right-0 top-0 z-20 h-full w-2">
+                  <PanelResizeHandle onMouseDown={onHandleMouseDown} isDragging={isDragging} />
+                </div>
               </div>
             </aside>
           )}
 
-          {/* Notes Editor & Reading Surface */}
-          <main className="flex-1 min-h-0 flex flex-col overflow-hidden relative bg-background">
+          <main className="min-w-0 flex-1 min-h-0 flex flex-col overflow-hidden relative bg-background">
             <NotesView />
           </main>
         </div>
 
-        {/* Modal Dialogs */}
         <SettingsDialog
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           initialTab={settingsTab}
-          onOpenReleaseNotes={() => setReleaseNotesOpen(true)}
         />
-        <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-        <ReleaseNotesDialog open={releaseNotesOpen} onOpenChange={setReleaseNotesOpen} />
 
-        {/* Confirmation dialog provider */}
         <ConfirmDialog />
 
-        {/* Toast notifications container */}
         <Toaster />
       </div>
     </TooltipProvider>

@@ -11,11 +11,10 @@ export interface NoteTemplate {
 export const NOTE_TEMPLATES: NoteTemplate[] = [
   {
     id: 'meeting-notes',
-    title: 'Meeting Notes',
+    title: 'Meeting notes',
     icon: '📋',
     category: 'Productivity',
-    description:
-      'Structure agenda items, attendee notes, key decisions, and follow-up action items.',
+    description: 'Keep the agenda, decisions, and next steps together.',
     tags: ['meeting', 'work'],
     content: `# 📋 Meeting: [Topic / Purpose]
 
@@ -45,11 +44,10 @@ export const NOTE_TEMPLATES: NoteTemplate[] = [
   },
   {
     id: 'project-spec',
-    title: 'Project Brief & Spec',
+    title: 'Project plan',
     icon: '🚀',
     category: 'Project',
-    description:
-      'Define problem statements, goals, non-goals, architecture design, and milestone timelines.',
+    description: 'Outline the goal, key details, and next steps.',
     tags: ['project', 'spec', 'roadmap'],
     content: `# 🚀 Project Spec: [Project Title]
 
@@ -81,11 +79,10 @@ What problem are we solving? Why is it important to solve now?
   },
   {
     id: 'daily-journal',
-    title: 'Daily Journal & Reflection',
+    title: 'Daily journal',
     icon: '☀️',
     category: 'Personal',
-    description:
-      'Track your top 3 daily priorities, brain dump thoughts, celebrate wins, and practice gratitude.',
+    description: 'Make space for your priorities, thoughts, and reflections.',
     tags: ['journal', 'daily', 'reflection'],
     content: `# ☀️ Daily Journal — ${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
 
@@ -112,11 +109,10 @@ What problem are we solving? Why is it important to solve now?
   },
   {
     id: 'tech-runbook',
-    title: 'Engineering Runbook',
+    title: 'Technical guide',
     icon: '🛠️',
     category: 'Engineering',
-    description:
-      'Operational runbook with architecture overview, deployment steps, health checks, and incident recovery.',
+    description: 'Keep setup instructions and useful checks in one place.',
     tags: ['engineering', 'devops', 'runbook'],
     content: `# 🛠️ Runbook: [Service / System Name]
 
@@ -154,11 +150,10 @@ npm run build
   },
   {
     id: 'brainstorming',
-    title: 'Idea Sandbox & Brainstorm',
+    title: 'Ideas',
     icon: '💡',
     category: 'Productivity',
-    description:
-      'Explore wild concepts, weigh pros and cons, assess risks, and formulate experimental next steps.',
+    description: 'Capture an idea and decide what to try next.',
     tags: ['ideas', 'brainstorming'],
     content: `# 💡 Idea Sandbox: [Concept Name]
 
@@ -188,11 +183,10 @@ What is the core breakthrough idea in a single sentence?
   },
   {
     id: 'sprint-planning',
-    title: 'Sprint Planning',
+    title: 'Weekly plan',
     icon: '🎯',
     category: 'Project',
-    description:
-      'Organize sprint goals, high/medium priority backlogs, user stories, and blocker mitigation.',
+    description: 'Choose priorities and plan the work ahead.',
     tags: ['sprint', 'agile', 'planning'],
     content: `# 🎯 Sprint Planning: [Sprint Name / Week]
 

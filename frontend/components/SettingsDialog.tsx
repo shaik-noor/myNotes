@@ -1,55 +1,61 @@
 import {
-  AlertCircle,
   Check,
-  CheckCircle2,
+  ChevronDown,
   Cloud,
   DatabaseBackup,
   Download,
   Info,
+  Keyboard,
   Laptop,
   Loader2,
   LogOut,
   Moon,
   Palette,
   RefreshCw,
-  ShieldCheck,
   Sparkles,
   Sun,
   Upload
 } from 'lucide-react'
 import type React from 'react'
 import { useEffect, useState } from 'react'
-import appIcon from '../assets/icon.png'
 import { useTheme } from '../context/ThemeContext'
 import { useNotesStore } from '../store/useNotesStore'
-import type { CloudSyncConfig, EditorFont, Palette as PaletteType, ThemeMode } from '../types/notes'
+import type { CloudSyncConfig, EditorFont, Palette as PaletteType } from '../types/notes'
 import { Button } from './ui/button'
 import { confirmDialog } from './ui/confirm'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
+import { DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from './ui/dropdown-menu'
+import { Sheet, SheetContent } from './ui/sheet'
 import { toast } from './ui/toast'
+import { KeyboardShortcutsContent } from './KeyboardShortcuts'
+import { ReleaseNotesContent } from './ReleaseNotes'
 import { APP_VERSION } from '../data/releaseNotes'
 import { cn } from './ui/utils'
 
-export type SettingsTab = 'appearance' | 'cloud' | 'data' | 'about'
+export type SettingsTab = 'appearance' | 'cloud' | 'data' | 'shortcuts' | 'updates' | 'about'
 
 interface SettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialTab?: SettingsTab
-  onOpenReleaseNotes?: () => void
 }
 
 const PALETTES: { id: PaletteType; label: string; description: string; swatch: string }[] = [
-  { id: 'blue', label: 'Default Ocean', description: 'Clean Slate & Blue', swatch: '#3b82f6' },
-  { id: 'amber', label: 'Warm Amber', description: 'Cozy Glow & Warmth', swatch: '#f59e0b' },
-  { id: 'violet', label: 'Deep Violet', description: 'Royal Lavender & Purple', swatch: '#8b5cf6' },
+  { id: 'blue', label: 'Blue', description: 'Blue accents', swatch: '#3b82f6' },
+  { id: 'amber', label: 'Amber', description: 'Amber accents', swatch: '#f59e0b' },
+  { id: 'violet', label: 'Violet', description: 'Purple accents', swatch: '#8b5cf6' },
   {
     id: 'emerald',
-    label: 'Emerald Forest',
-    description: 'Serene Nature & Green',
+    label: 'Green',
+    description: 'Green accents',
     swatch: '#10b981'
   },
-  { id: 'rose', label: 'Soft Rose', description: 'Modern Blush & Coral', swatch: '#f43f5e' }
+  { id: 'rose', label: 'Rose', description: 'Pink accents', swatch: '#f43f5e' }
 ]
 
 const FONTS: { id: EditorFont; label: string; sample: string; className: string }[] = [
@@ -61,7 +67,7 @@ const FONTS: { id: EditorFont; label: string; sample: string; className: string 
   },
   {
     id: 'font-serif-editor',
-    label: 'Lora Serif',
+    label: 'Merriweather Serif',
     sample: 'The quick brown fox jumps over the lazy dog.',
     className: 'font-serif-editor'
   },
@@ -97,8 +103,7 @@ const GoogleGIcon: React.FC<{ className?: string }> = ({ className = 'size-4' })
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   open,
   onOpenChange,
-  initialTab,
-  onOpenReleaseNotes
+  initialTab
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance')
   const { theme, setTheme, palette, setPalette, fontClass, setFontClass } = useTheme()
@@ -151,7 +156,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
       const res = await window.api.storage.backup()
       if (res.success && res.data) {
         toast.success('Backup created successfully', { description: res.data })
-      } else {
+      } else if (res.error !== 'Canceled by user') {
         toast.error('Backup failed', {
           description: res.error || 'Could not export database backup'
         })
@@ -167,8 +172,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     const ok = await confirmDialog({
       title: 'Restore from backup?',
       description:
-        'Restoring will merge or overwrite existing notes from the chosen backup archive.',
-      confirmText: 'Choose Backup File…'
+        'This replaces all notes and attachments with the selected backup. Create a backup first to keep your current notes.',
+      confirmText: 'Choose backup',
+      destructive: true
     })
     if (!ok) return
 
@@ -180,7 +186,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         toast.success('Backup restored successfully', {
           description: 'Your notes and attachments have been reloaded.'
         })
-      } else if (res.error !== 'Restore canceled') {
+      } else if (res.error !== 'Canceled by user') {
         toast.error('Restore failed', { description: res.error || 'Could not restore backup' })
       }
     } catch (e: unknown) {
@@ -268,557 +274,373 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
   const handleToggleAutoSync = async (enabled: boolean): Promise<void> => {
     try {
-      await window.api?.cloud?.setAutoSync?.(enabled)
+      const result = await window.api.cloud.setAutoSync(enabled)
+      if (!result.success) throw new Error(result.error || 'Please try again.')
       setCloudConfig((prev) => (prev ? { ...prev, autoSync: enabled } : null))
       toast.info(enabled ? 'Auto-sync enabled' : 'Auto-sync disabled')
     } catch (e) {
-      console.error(e)
+      toast.error('Could not change automatic sync', {
+        description: e instanceof Error ? e.message : 'Please try again.'
+      })
     }
   }
 
+  const sections = [
+    {
+      id: 'appearance',
+      label: 'Appearance',
+      icon: Palette,
+      description: 'Make this space your own.'
+    },
+    {
+      id: 'cloud',
+      label: 'Cloud sync',
+      icon: Cloud,
+      description: 'Keep your notes in your Google Drive.'
+    },
+    {
+      id: 'data',
+      label: 'Backup and restore',
+      icon: DatabaseBackup,
+      description: 'Keep a separate copy of your notes and files.'
+    },
+    {
+      id: 'shortcuts',
+      label: 'Keyboard shortcuts',
+      icon: Keyboard,
+      description: 'A few shortcuts to keep you in the flow.'
+    },
+    {
+      id: 'updates',
+      label: 'What’s new',
+      icon: Sparkles,
+      description: 'Changes and improvements to myNotes.'
+    },
+    {
+      id: 'about',
+      label: 'About',
+      icon: Info,
+      description: 'A quiet place for notes and documents.'
+    }
+  ] as const
+  const section = sections.find((item) => item.id === activeTab) || sections[0]
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(88vh,660px)] w-[94vw] sm:w-[800px] max-w-[94vw] sm:max-w-[800px] flex-col gap-0 overflow-hidden p-0 rounded-2xl border border-border/40 bg-background/95 backdrop-blur-2xl shadow-2xl text-foreground">
-        <DialogHeader className="sr-only">
-          <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>
-            Manage your myNotes appearance, cloud sync, and backup preferences.
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full max-w-3xl gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-left">
+          <DialogTitle>Settings and help</DialogTitle>
+          <DialogDescription className="text-xs">
+            Preferences, sync, and everything else in one place.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="flex h-full min-h-0 flex-1">
-          {/* Sidebar Tabs */}
-          <div className="w-54 shrink-0 border-r border-border/40 bg-sidebar/50 p-3 flex flex-col gap-1">
-            <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground/70">
-              Preferences
-            </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab('appearance')}
-              className={cn(
-                'flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors text-left cursor-pointer',
-                activeTab === 'appearance'
-                  ? 'bg-notes text-notes-foreground font-semibold shadow-xs'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-              )}
-            >
-              <Palette className="size-4 shrink-0" />
-              <span>Theme & Display</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('cloud')}
-              className={cn(
-                'flex items-center justify-between rounded-lg px-3 py-2 text-xs font-medium transition-colors text-left cursor-pointer',
-                activeTab === 'cloud'
-                  ? 'bg-notes text-notes-foreground font-semibold shadow-xs'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-              )}
-            >
-              <div className="flex items-center gap-2.5">
-                <Cloud className="size-4 shrink-0" />
-                <span>Cloud Sync</span>
-              </div>
-              {cloudConfig?.isConnected && (
-                <span className="size-2 rounded-full bg-emerald-500 shrink-0 shadow-xs" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('data')}
-              className={cn(
-                'flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors text-left cursor-pointer',
-                activeTab === 'data'
-                  ? 'bg-notes text-notes-foreground font-semibold shadow-xs'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-              )}
-            >
-              <DatabaseBackup className="size-4 shrink-0" />
-              <span>Backup & Restore</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('about')}
-              className={cn(
-                'flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors text-left cursor-pointer',
-                activeTab === 'about'
-                  ? 'bg-notes text-notes-foreground font-semibold shadow-xs'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-              )}
-            >
-              <Info className="size-4 shrink-0" />
-              <span>About myNotes</span>
-            </button>
-          </div>
-
-          {/* Tab Content */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
-            {activeTab === 'appearance' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">Color Mode</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Select your preferred window theme.
-                  </p>
-                  <div className="grid grid-cols-3 gap-3 mt-3">
-                    {[
-                      { id: 'light', label: 'Light', icon: Sun },
-                      { id: 'dark', label: 'Dark', icon: Moon },
-                      { id: 'system', label: 'System', icon: Laptop }
-                    ].map((m) => {
-                      const Icon = m.icon
-                      const isSelected = theme === m.id
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => setTheme(m.id as ThemeMode)}
-                          className={cn(
-                            'flex flex-col items-center gap-2 rounded-xl border p-3.5 text-xs font-medium transition-all cursor-pointer text-center',
-                            isSelected
-                              ? 'border-notes bg-notes/10 text-foreground ring-2 ring-notes/30 shadow-xs'
-                              : 'border-border/60 bg-card/60 text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                          )}
-                        >
-                          <Icon className={cn('size-5', isSelected && 'text-notes')} />
-                          <span>{m.label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className="border-t border-border/40 pt-5">
-                  <h3 className="text-sm font-bold text-foreground">Accent Palette</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Choose an accent color tone for icons, active tabs and highlights.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3">
-                    {PALETTES.map((p) => {
-                      const isSelected = palette === p.id
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => setPalette(p.id)}
-                          className={cn(
-                            'flex items-center gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer',
-                            isSelected
-                              ? 'border-notes bg-notes/10 ring-2 ring-notes/30 shadow-xs'
-                              : 'border-border/60 bg-card/60 hover:bg-muted/50'
-                          )}
-                        >
-                          <span
-                            className="size-5 rounded-full shrink-0 border border-white/20 shadow-xs"
-                            style={{ backgroundColor: p.swatch }}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs font-bold text-foreground">{p.label}</div>
-                            <div className="text-2xs text-muted-foreground">{p.description}</div>
-                          </div>
-                          {isSelected && <Check className="size-4 text-notes shrink-0" />}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className="border-t border-border/40 pt-5">
-                  <h3 className="text-sm font-bold text-foreground">Editor Typography</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Customize font family used across note writing canvases.
-                  </p>
-                  <div className="grid grid-cols-1 gap-2.5 mt-3">
-                    {FONTS.map((f) => {
-                      const isSelected = fontClass === f.id
-                      return (
-                        <button
-                          key={f.id}
-                          type="button"
-                          onClick={() => setFontClass(f.id)}
-                          className={cn(
-                            'flex items-center justify-between rounded-xl border p-3 text-left transition-all cursor-pointer',
-                            isSelected
-                              ? 'border-notes bg-notes/10 ring-2 ring-notes/30 shadow-xs'
-                              : 'border-border/60 bg-card/60 hover:bg-muted/50'
-                          )}
-                        >
-                          <div>
-                            <div className="text-xs font-bold text-foreground">{f.label}</div>
-                            <div
-                              className={cn('text-xs text-muted-foreground mt-0.5', f.className)}
-                            >
-                              {f.sample}
-                            </div>
-                          </div>
-                          {isSelected && <Check className="size-4 text-notes shrink-0 ml-2" />}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Cloud Sync Tab (Google Drive) */}
-            {activeTab === 'cloud' && (
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-foreground">
-                      Google Drive Cloud Storage
-                    </h3>
-                    {cloudConfig?.isConnected ? (
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-2xs font-semibold text-emerald-500 border border-emerald-500/20">
-                        Active & Connected
-                      </span>
-                    ) : cloudConfig?.isReady ? (
-                      <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-2xs font-semibold text-blue-500 border border-blue-500/20">
-                        1-Click Connect Ready
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-2xs font-semibold text-amber-500 border border-amber-500/20">
-                        Setup Required
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Connect your personal Google account. All notes and attachments sync to your
-                    Google Drive AppData folder with complete privacy.
-                  </p>
-                </div>
-
-                {cloudConfig?.isConnected ? (
-                  /* Connected State */
-                  <div className="space-y-4">
-                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        {cloudConfig.userPicture ? (
-                          <img
-                            src={cloudConfig.userPicture}
-                            alt="Google Avatar"
-                            className="size-11 rounded-full border border-emerald-500/30 shrink-0 shadow-xs"
-                          />
-                        ) : (
-                          <div className="flex size-11 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-500 font-bold shrink-0">
-                            {cloudConfig.userName?.charAt(0) || 'G'}
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-foreground truncate">
-                              {cloudConfig.userName || 'Google Drive User'}
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-3xs font-semibold text-emerald-500">
-                              <CheckCircle2 className="size-2.5" />
-                              Active Vault
-                            </span>
-                          </div>
-                          <div className="text-2xs text-muted-foreground truncate">
-                            {cloudConfig.userEmail}
-                          </div>
-                        </div>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCloudLogout}
-                        className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 gap-1.5 cursor-pointer"
-                      >
-                        <LogOut className="size-3.5" />
-                        Disconnect
-                      </Button>
-                    </div>
-
-                    {/* Sync Controls Card */}
-                    <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-xs font-bold text-foreground">
-                            Vault Synchronization
-                          </div>
-                          <div className="text-2xs text-muted-foreground mt-0.5">
-                            {cloudConfig.lastSyncTime ? (
-                              <span>
-                                Last synced: {new Date(cloudConfig.lastSyncTime).toLocaleString()}
-                              </span>
-                            ) : (
-                              <span>Initial sync in progress...</span>
-                            )}
-                          </div>
-                        </div>
-
-                        <Button
-                          onClick={handleCloudSyncNow}
-                          disabled={isSyncing || cloudConfig.isSyncing}
-                          className="h-8 text-xs font-semibold gap-1.5 cursor-pointer bg-notes text-notes-foreground hover:bg-notes/90"
-                        >
-                          <RefreshCw
-                            className={cn(
-                              'size-3.5',
-                              (isSyncing || cloudConfig.isSyncing) && 'animate-spin'
-                            )}
-                          />
-                          {isSyncing || cloudConfig.isSyncing ? 'Syncing…' : 'Sync Now'}
-                        </Button>
-                      </div>
-
-                      <div className="border-t border-border/30 pt-3 flex items-center justify-between">
-                        <div>
-                          <div className="text-xs font-medium text-foreground">
-                            Auto-sync changes
-                          </div>
-                          <div className="text-2xs text-muted-foreground">
-                            Uploads note edits after 4 seconds and checks for remote updates every 5
-                            mins.
-                          </div>
-                        </div>
-
-                        <input
-                          type="checkbox"
-                          checked={cloudConfig.autoSync}
-                          onChange={(e) => handleToggleAutoSync(e.target.checked)}
-                          className="size-4 rounded accent-notes cursor-pointer"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Privacy Guarantee Card */}
-                    <div className="rounded-xl border border-border/40 bg-muted/20 p-3.5 flex items-start gap-3 text-xs text-muted-foreground">
-                      <ShieldCheck className="size-5 text-emerald-500 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-semibold text-foreground">
-                          Encrypted in Google Drive AppData
-                        </div>
-                        <div className="text-2xs mt-0.5">
-                          Stored inside your personal Google Drive hidden Application Data folder (
-                          <code className="bg-muted px-1 py-0.5 rounded text-3xs">
-                            mynotes_vault.json
-                          </code>
-                          ). Future mobile versions of myNotes will sync seamlessly with this exact
-                          same file.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Disconnected State */
-                  <div className="space-y-4">
-                    {!cloudConfig?.isReady && (
-                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex items-start gap-3 text-xs text-amber-400">
-                        <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-500" />
-                        <div className="font-semibold text-amber-500">
-                          Google Drive sync isn't available in this build of myNotes.
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Main Connect Card */}
-                    <div className="rounded-2xl border border-border/60 bg-card/40 p-5 space-y-4 text-center">
-                      <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                        <Cloud className="size-6" />
-                      </div>
-                      <div className="max-w-md mx-auto">
-                        <h4 className="text-sm font-bold text-foreground">
-                          Store your notes in your own Google Drive
-                        </h4>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          No intermediate database or monthly server fees. You own 100% of your
-                          notes in your personal Google account.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col items-center gap-2">
-                        <Button
-                          onClick={handleCloudLogin}
-                          disabled={isLoggingIn || !cloudConfig?.isReady}
-                          className="w-full sm:w-auto px-6 h-9 mx-auto text-xs font-semibold gap-2.5 cursor-pointer bg-white text-zinc-900 hover:bg-zinc-100 shadow-md border border-zinc-200 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-                        >
-                          {isLoggingIn ? (
-                            <Loader2 className="size-4 animate-spin text-zinc-700" />
-                          ) : (
-                            <GoogleGIcon className="size-4" />
-                          )}
-                          <span>
-                            {isLoggingIn ? 'Connecting to Google...' : 'Sign in with Google'}
-                          </span>
-                        </Button>
-
-                        {cloudConfig?.isReady && (
-                          <div className="flex items-center gap-1.5 text-3xs text-emerald-500 font-medium">
-                            <CheckCircle2 className="size-3" />
-                            <span>Secure 1-click sign-in with your Google account</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Feature Triad */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-left">
-                        <ShieldCheck className="size-4 text-emerald-500 mb-1.5" />
-                        <div className="text-xs font-bold text-foreground">Zero-Server Privacy</div>
-                        <div className="text-2xs text-muted-foreground mt-0.5">
-                          Data travels directly between this device and Google. No third party
-                          server ever sees your notes.
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-left">
-                        <DatabaseBackup className="size-4 text-notes mb-1.5" />
-                        <div className="text-xs font-bold text-foreground">Local-First Speed</div>
-                        <div className="text-2xs text-muted-foreground mt-0.5">
-                          Notes are cached in local SQLite for instant search and offline edits,
-                          syncing to Drive in background.
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-left">
-                        <Laptop className="size-4 text-amber-500 mb-1.5" />
-                        <div className="text-xs font-bold text-foreground">Future Mobile Ready</div>
-                        <div className="text-2xs text-muted-foreground mt-0.5">
-                          Upcoming mobile apps will connect to the exact same Google Drive vault for
-                          seamless sync.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+        <div className="shrink-0 border-b border-border p-3 sm:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                aria-label="Settings section"
+                className="h-10 w-full justify-between px-3 text-sm"
+              >
+                {section.label}
+                <ChevronDown className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+              {sections.map((item) => (
+                <DropdownMenuItem
+                  key={item.id}
+                  aria-current={activeTab === item.id ? 'true' : undefined}
+                  onClick={() => setActiveTab(item.id)}
+                  className="py-2.5"
+                >
+                  <item.icon className="size-4" />
+                  {item.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="flex min-h-0 flex-1">
+          <nav
+            aria-label="Settings sections"
+            className="hidden w-48 shrink-0 flex-col gap-1 border-r border-border bg-sidebar p-3 sm:flex"
+          >
+            {sections.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={activeTab === item.id ? 'page' : undefined}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  'flex items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-xs transition-colors',
+                  activeTab === item.id
+                    ? 'bg-notes/10 font-medium text-notes'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
+              >
+                <item.icon className="size-4 shrink-0" />
+                {item.label}
+              </button>
+            ))}
+            <span className="mt-auto px-3 py-2 text-xs text-muted-foreground">
+              myNotes · {APP_VERSION}
+            </span>
+          </nav>
+          <div className="min-w-0 flex-1 overflow-y-auto p-5 sm:p-7">
+            <header className="mb-6">
+              <h2 className="text-lg font-semibold tracking-tight">{section.label}</h2>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                {section.description}
+              </p>
+            </header>
+            {activeTab === 'appearance' && (
+              <div className="space-y-7">
+                <section>
+                  <h3 className="mb-3 text-sm font-medium">Theme</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(
+                      [
+                        { id: 'light', label: 'Light', icon: Sun },
+                        { id: 'dark', label: 'Dark', icon: Moon },
+                        { id: 'system', label: 'System', icon: Laptop }
+                      ] as const
+                    ).map((mode) => (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        aria-pressed={theme === mode.id}
+                        onClick={() => setTheme(mode.id)}
+                        className={cn(
+                          'flex flex-col items-center gap-2 rounded-lg border p-4 text-xs transition-colors',
+                          theme === mode.id
+                            ? 'border-notes bg-notes/5 text-notes'
+                            : 'border-border text-muted-foreground hover:bg-muted'
+                        )}
+                      >
+                        <mode.icon className="size-5" />
+                        {mode.label}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <section>
+                  <h3 className="mb-3 text-sm font-medium">Accent color</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {PALETTES.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        aria-pressed={palette === item.id}
+                        onClick={() => setPalette(item.id)}
+                        className={cn(
+                          'flex items-center gap-2 rounded-md border px-3 py-2 text-xs',
+                          palette === item.id
+                            ? 'border-notes bg-notes/5'
+                            : 'border-border hover:bg-muted'
+                        )}
+                      >
+                        <span
+                          className="flex size-4 items-center justify-center rounded-full"
+                          style={{ backgroundColor: item.swatch }}
+                        >
+                          {palette === item.id && <Check className="size-3 text-white" />}
+                        </span>
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <section>
+                  <h3 className="mb-1 text-sm font-medium">Editor font</h3>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Applies to your writing. Menus and navigation stay the same.
+                  </p>
+                  <div className="space-y-2">
+                    {FONTS.map((font) => (
+                      <button
+                        key={font.id}
+                        type="button"
+                        aria-pressed={fontClass === font.id}
+                        onClick={() => setFontClass(font.id)}
+                        className={cn(
+                          'flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left',
+                          fontClass === font.id
+                            ? 'border-notes bg-notes/5'
+                            : 'border-border hover:bg-muted'
+                        )}
+                      >
+                        <span>
+                          <span className="block text-xs font-medium">{font.label}</span>
+                          <span
+                            className={cn(
+                              'mt-1 block text-sm text-muted-foreground',
+                              font.className
+                            )}
+                          >
+                            {font.sample}
+                          </span>
+                        </span>
+                        {fontClass === font.id && <Check className="size-4 shrink-0 text-notes" />}
+                      </button>
+                    ))}
+                  </div>
+                </section>
               </div>
             )}
-
-            {activeTab === 'data' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">Local Database Storage</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Your notes, trees, links, and attachments are saved locally on this machine
-                    using SQLite.
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <span className="flex size-9 items-center justify-center rounded-lg bg-notes/10 text-notes shrink-0">
-                      <Download className="size-4" />
+            {activeTab === 'cloud' && (
+              <div className="space-y-5">
+                <div className="rounded-lg border border-border p-4">
+                  <div className="mb-4 flex items-center gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <Cloud className="size-5" />
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-xs font-bold text-foreground">Export Full Backup</h4>
-                      <p className="text-2xs text-muted-foreground mt-0.5">
-                        Creates a portable, JSON-packaged backup of your entire library including
-                        all markdown notes and file attachments.
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-medium">
+                        {cloudConfig?.isConnected
+                          ? 'Google Drive connected'
+                          : 'Connect Google Drive'}
+                      </h3>
+                      <p className="mt-1 break-all text-xs text-muted-foreground">
+                        {cloudConfig?.isConnected
+                          ? cloudConfig.userEmail
+                          : 'Optional. Your notes work offline without an account.'}
                       </p>
                     </div>
                   </div>
+                  {cloudConfig?.isConnected ? (
+                    <div className="space-y-4">
+                      <div className="text-xs leading-relaxed text-muted-foreground">
+                        {cloudConfig.isSyncing || isSyncing
+                          ? 'Syncing your notes…'
+                          : cloudConfig.lastError
+                            ? 'Your latest sync could not finish.'
+                            : cloudConfig.lastSyncTime
+                              ? `Last synced ${new Date(cloudConfig.lastSyncTime).toLocaleString()}`
+                              : 'Ready to sync.'}
+                      </div>
+                      {cloudConfig.lastError && (
+                        <p role="alert" className="break-words text-xs text-destructive">
+                          {cloudConfig.lastError}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          disabled={isSyncing || cloudConfig.isSyncing}
+                          onClick={() => void handleCloudSyncNow()}
+                        >
+                          <RefreshCw className={cn('size-3.5', isSyncing && 'animate-spin')} />
+                          {isSyncing ? 'Syncing…' : 'Sync now'}
+                        </Button>
+                        <Button variant="outline" onClick={() => void handleCloudLogout()}>
+                          <LogOut className="size-3.5" />
+                          Disconnect
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <Button
+                        disabled={isLoggingIn || !cloudConfig?.isReady}
+                        onClick={() => void handleCloudLogin()}
+                      >
+                        {isLoggingIn ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <GoogleGIcon />
+                        )}{' '}
+                        {isLoggingIn ? 'Connecting…' : 'Sign in with Google'}
+                      </Button>
+                      {!cloudConfig?.isReady && (
+                        <p className="text-xs text-muted-foreground">
+                          Google Drive sync is not available in this build.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {cloudConfig?.isConnected && (
+                  <label className="flex items-center justify-between gap-4 rounded-lg border border-border p-4">
+                    <span>
+                      <span className="block text-sm font-medium">Sync automatically</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Keep Google Drive up to date while you work.
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={cloudConfig.autoSync}
+                      onChange={(event) => void handleToggleAutoSync(event.target.checked)}
+                      className="size-4 accent-[var(--notes)]"
+                    />
+                  </label>
+                )}
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Notes and files are stored in the app’s private Google Drive folder. myNotes does
+                  not add end-to-end encryption. Disconnecting keeps the notes on this device.
+                </p>
+              </div>
+            )}
+            {activeTab === 'data' && (
+              <div className="space-y-4">
+                <section className="rounded-lg border border-border p-4">
+                  <h3 className="text-sm font-medium">Create a backup</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    Save your pages, attachments, and preferences in one file. Keep it somewhere
+                    safe.
+                  </p>
                   <Button
-                    onClick={handleBackup}
+                    className="mt-4"
+                    onClick={() => void handleBackup()}
                     disabled={isExporting}
-                    className="w-full h-8 text-xs font-semibold gap-1.5 cursor-pointer bg-notes text-notes-foreground hover:bg-notes/90"
                   >
                     <Download className="size-3.5" />
-                    {isExporting ? 'Exporting…' : 'Export Backup File'}
+                    {isExporting ? 'Creating backup…' : 'Save backup'}
                   </Button>
-                </div>
-
-                <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 shrink-0">
-                      <Upload className="size-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-xs font-bold text-foreground">
-                        Restore from Backup Archive
-                      </h4>
-                      <p className="text-2xs text-muted-foreground mt-0.5">
-                        Import notes and attachments from a previously exported{' '}
-                        <code className="text-2xs bg-muted px-1 rounded">.json</code> backup
-                        archive.
-                      </p>
-                    </div>
-                  </div>
+                </section>
+                <section className="rounded-lg border border-border p-4">
+                  <h3 className="text-sm font-medium">Restore a backup</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    Replace your current pages and attachments with a saved backup. Create a backup
+                    first if you want to keep them.
+                  </p>
                   <Button
                     variant="outline"
-                    onClick={handleRestore}
+                    className="mt-4"
+                    onClick={() => void handleRestore()}
                     disabled={isImporting}
-                    className="w-full h-8 text-xs font-semibold gap-1.5 cursor-pointer border-border/80"
                   >
                     <Upload className="size-3.5" />
-                    {isImporting ? 'Restoring…' : 'Select Backup to Restore'}
+                    {isImporting ? 'Restoring…' : 'Choose backup'}
                   </Button>
-                </div>
+                </section>
               </div>
             )}
-
+            {activeTab === 'shortcuts' && <KeyboardShortcutsContent />}
+            {activeTab === 'updates' && <ReleaseNotesContent />}
             {activeTab === 'about' && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-card/50 p-4">
-                  <img
-                    src={appIcon}
-                    alt="myNotes icon"
-                    className="size-14 rounded-2xl shadow-md border border-border/40 object-cover"
-                  />
-                  <div>
-                    <h3 className="text-base font-bold text-foreground">myNotes</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Version {APP_VERSION} (Tauri 2.0 Native Desktop)
-                    </p>
-                    <p className="text-2xs text-muted-foreground mt-1">
-                      Standalone note-taking workspace with Notion-grade polish.
-                    </p>
-                  </div>
+              <div className="space-y-5">
+                <div className="rounded-lg border border-border p-4">
+                  <h3 className="text-base font-semibold">myNotes</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Version {APP_VERSION}</p>
+                  <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                    Write, organize, and find your notes. Your pages live on this device, with
+                    optional Google Drive sync.
+                  </p>
                 </div>
-
-                <div className="rounded-xl border border-border/40 divide-y divide-border/30 text-xs bg-muted/20">
-                  <div className="flex items-center justify-between p-3">
-                    <span className="text-muted-foreground">Platform</span>
-                    <span className="font-medium text-foreground">
-                      Tauri 2.0 (Rust) &amp; macOS Apple Silicon
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3">
-                    <span className="text-muted-foreground">Cloud Sync Engine</span>
-                    <span className="font-medium text-foreground">
-                      Google Drive AppData (BYOC / OAuth 2.0 PKCE)
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3">
-                    <span className="text-muted-foreground">Editor Engine</span>
-                    <span className="font-medium text-foreground">TipTap v3 &amp; ProseMirror</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3">
-                    <span className="text-muted-foreground">Storage Engine</span>
-                    <span className="font-medium text-foreground">
-                      SQLite (Native Rusqlite &amp; WAL Mode)
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3">
-                    <span className="text-muted-foreground">Styling Framework</span>
-                    <span className="font-medium text-foreground">
-                      Tailwind CSS v4 &amp; Framer Motion
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      onOpenChange(false)
-                      onOpenReleaseNotes?.()
-                    }}
-                    className="w-full justify-center gap-2 text-xs font-semibold hover:bg-muted cursor-pointer h-9 rounded-xl"
-                  >
-                    <Sparkles className="size-3.5 text-notes" />
-                    What's New in v{APP_VERSION} (Release Notes)
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => setActiveTab('updates')}>
+                    What’s new
+                  </Button>
+                  <Button variant="outline" onClick={() => setActiveTab('shortcuts')}>
+                    Keyboard shortcuts
                   </Button>
                 </div>
               </div>
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

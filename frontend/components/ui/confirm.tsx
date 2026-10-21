@@ -1,8 +1,8 @@
-import { AnimatePresence, motion } from 'framer-motion'
 import { AlertTriangle } from 'lucide-react'
 import type React from 'react'
 import { useEffect, useState } from 'react'
 import { Button } from './button'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from './dialog'
 
 export interface ConfirmDialogOptions {
   title: string
@@ -38,7 +38,7 @@ class ConfirmManager {
         const ok = window.confirm(`${options.title}\n\n${options.description || ''}`)
         return Promise.resolve(ok)
       }
-      return Promise.resolve(true)
+      return Promise.resolve(false)
     }
 
     if (this.currentResolver) {
@@ -93,61 +93,52 @@ export function ConfirmDialog(): React.JSX.Element {
   }
 
   return (
-    <AnimatePresence>
+    <Dialog
+      open={!!dialogState}
+      onOpenChange={(open) => {
+        if (!open) handleClose(false)
+      }}
+    >
       {dialogState && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => handleClose(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ duration: 0.15 }}
-            className="relative z-10 w-full max-w-md rounded-2xl border border-border/80 bg-card p-6 shadow-2xl text-card-foreground select-none"
-          >
-            <div className="flex items-start gap-4">
-              {dialogState.destructive ? (
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-                  <AlertTriangle className="size-5" />
-                </div>
-              ) : null}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-foreground leading-tight">
-                  {dialogState.title}
-                </h3>
-                {dialogState.description && (
-                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                    {dialogState.description}
-                  </p>
-                )}
+        <DialogContent
+          className="max-w-md"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+            document.getElementById('confirm-cancel')?.focus()
+          }}
+        >
+          <div className="flex items-start gap-4">
+            {dialogState.destructive && (
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <AlertTriangle className="size-5" />
               </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <DialogTitle>{dialogState.title}</DialogTitle>
+              <DialogDescription className="mt-2">
+                {dialogState.description || 'Choose an option to continue.'}
+              </DialogDescription>
             </div>
-
-            <div className="mt-6 flex justify-end gap-2.5">
-              <Button variant="outline" size="sm" onClick={() => handleClose(false)}>
-                {dialogState.cancelText || 'Cancel'}
-              </Button>
-              <Button
-                variant={dialogState.destructive ? 'destructive' : 'default'}
-                size="sm"
-                onClick={() => handleClose(true)}
-              >
-                {dialogState.confirmText || 'Confirm'}
-              </Button>
-            </div>
-          </motion.div>
-        </div>
+          </div>
+          <div className="mt-4 flex justify-end gap-2.5">
+            <Button
+              id="confirm-cancel"
+              variant="outline"
+              size="sm"
+              onClick={() => handleClose(false)}
+            >
+              {dialogState.cancelText || 'Cancel'}
+            </Button>
+            <Button
+              variant={dialogState.destructive ? 'destructive' : 'default'}
+              size="sm"
+              onClick={() => handleClose(true)}
+            >
+              {dialogState.confirmText || 'Confirm'}
+            </Button>
+          </div>
+        </DialogContent>
       )}
-    </AnimatePresence>
+    </Dialog>
   )
-}
-
-// Export both ConfirmDialog and ConfirmProvider for complete backwards compatibility
-export function ConfirmProvider(): React.JSX.Element {
-  return <ConfirmDialog />
 }

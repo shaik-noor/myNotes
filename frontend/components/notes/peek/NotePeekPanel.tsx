@@ -41,12 +41,12 @@ export const NotePeekPanel: React.FC<NotePeekPanelProps> = ({
   if (!note) {
     return (
       <motion.aside
-        initial={{ x: reduced ? 0 : 40, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: reduced ? 0 : 40, opacity: 0 }}
+        initial={{ x: reduced ? 0 : '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: reduced ? 0 : '100%' }}
         transition={{ duration: reduced ? 0 : duration.base, ease: ease.out }}
-        style={{ width }}
-        className="relative flex h-full shrink-0 flex-col border-l border-border/60 bg-card"
+        style={{ width, maxWidth: '100%' }}
+        className="absolute right-0 top-0 z-30 flex h-full shrink-0 flex-col border-l border-border/60 bg-card"
       >
         <div
           data-slot="note-peek-header"
@@ -85,12 +85,12 @@ export const NotePeekPanel: React.FC<NotePeekPanelProps> = ({
 
   return (
     <motion.aside
-      initial={{ x: reduced ? 0 : 40, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: reduced ? 0 : 40, opacity: 0 }}
+      initial={{ x: reduced ? 0 : '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: reduced ? 0 : '100%' }}
       transition={{ duration: reduced ? 0 : duration.base, ease: ease.out }}
-      style={{ width }}
-      className="relative flex h-full shrink-0 flex-col border-l border-border/60 bg-card"
+      style={{ width, maxWidth: '100%' }}
+      className="absolute right-0 top-0 z-30 flex h-full shrink-0 flex-col border-l border-border/60 bg-card"
     >
       <PanelResizeHandle onMouseDown={onHandleMouseDown} isDragging={isDragging} />
 

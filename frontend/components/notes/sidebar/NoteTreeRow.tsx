@@ -2,7 +2,6 @@ import { Check, ChevronRight, Copy, MoreVertical, Pin, PinOff, Plus, Trash2 } fr
 import type React from 'react'
 import { useState } from 'react'
 import type { NoteTreeNode } from '../../../store/useNotesStore'
-import { confirmDialog } from '../../ui/confirm'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -135,15 +134,6 @@ export const NoteTreeRow: React.FC<NoteTreeRowProps> = ({
   }
 
   const handleDelete = async (): Promise<void> => {
-    if (!hasChildren) {
-      const ok = await confirmDialog({
-        title: 'Delete page?',
-        description: `"${node.title || 'Untitled'}" will be deleted.`,
-        confirmText: 'Delete',
-        destructive: true
-      })
-      if (!ok) return
-    }
     await onDelete(node.id)
   }
 
@@ -180,21 +170,7 @@ export const NoteTreeRow: React.FC<NoteTreeRowProps> = ({
         )}
       >
         <div
-          role="button"
-          tabIndex={0}
-          aria-current={isActive ? 'page' : undefined}
-          onClick={activate}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              activate()
-            }
-          }}
-          onDoubleClick={(e) => {
-            e.stopPropagation()
-            if (!isSelectMode) onEnterSelect(node.id)
-          }}
-          className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md min-h-10 py-1 pr-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           style={{ paddingLeft: `${indentPx + 6}px` }}
         >
           {hasChildren ? (
@@ -219,30 +195,39 @@ export const NoteTreeRow: React.FC<NoteTreeRowProps> = ({
             <div className="size-4 shrink-0" />
           ) : null}
 
-          {isSelectMode ? (
-            <SelectBox checked={isChecked} />
-          ) : (
-            <NoteGlyph icon={node.icon} isBook={hasChildren} active={isActive} />
-          )}
-
-          <span className="truncate text-xs">{node.title || 'Untitled'}</span>
-
-          {!isSelectMode && (node.pinned || hasChildren) && (
-            <span className="ml-auto flex shrink-0 items-center gap-1 pl-1">
-              {node.pinned && (
-                <Pin className="size-3 fill-notes/25 text-notes" aria-label="Pinned" />
-              )}
-              {hasChildren && (
-                <span className="rounded-full bg-muted/70 px-1.5 text-2xs font-medium tabular-nums text-muted-foreground">
-                  {node.children.length}
-                </span>
-              )}
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={activate}
+            onDoubleClick={(event) => {
+              event.stopPropagation()
+              if (!isSelectMode) onEnterSelect(node.id)
+            }}
+            aria-current={isActive ? 'page' : undefined}
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-notes/40"
+          >
+            {isSelectMode ? (
+              <SelectBox checked={isChecked} />
+            ) : (
+              <NoteGlyph icon={node.icon} isBook={hasChildren} active={isActive} />
+            )}
+            <span className="truncate text-[13px]">{node.title || 'Untitled'}</span>
+            {!isSelectMode && (node.pinned || hasChildren) && (
+              <span className="ml-auto flex shrink-0 items-center gap-1 pl-1">
+                {node.pinned && (
+                  <Pin className="size-3 fill-notes/25 text-notes" aria-label="Pinned" />
+                )}
+                {hasChildren && (
+                  <span className="rounded-full bg-muted/70 px-1.5 text-2xs font-medium tabular-nums text-muted-foreground">
+                    {node.children.length}
+                  </span>
+                )}
+              </span>
+            )}{' '}
+          </button>
         </div>
 
         {!isSelectMode && (
-          <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-md border border-border/60 bg-popover/90 p-0.5 text-popover-foreground opacity-0 shadow-md backdrop-blur-md transition-opacity duration-150 group-hover/note-item:opacity-100 group-focus-within/note-item:opacity-100 has-[[data-state=open]]:opacity-100">
+          <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-md border border-border/60 bg-popover/90 p-0.5 text-popover-foreground opacity-0 shadow-md backdrop-blur-md transition-opacity duration-150 group-hover/note-item:opacity-100 group-focus-within/note-item:opacity-100 has-[[data-state=open]]:opacity-100 max-[899px]:static max-[899px]:translate-y-0 max-[899px]:border-0 max-[899px]:bg-transparent max-[899px]:opacity-100 max-[899px]:shadow-none">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -251,24 +236,32 @@ export const NoteTreeRow: React.FC<NoteTreeRowProps> = ({
                     e.stopPropagation()
                     onCreateChild(node.id)
                   }}
-                  className={ROW_ACTION}
-                  aria-label={hasChildren ? 'Add page to book' : 'Add sub-page'}
+                  className={cn(ROW_ACTION, 'max-[899px]:hidden')}
+                  aria-label={hasChildren ? 'Add child page' : 'Add child page'}
                 >
                   <Plus className="size-3.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {hasChildren ? 'Add page to book' : 'Add sub-page'}
+                {hasChildren ? 'Add child page' : 'Add child page'}
               </TooltipContent>
             </Tooltip>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button type="button" className={ROW_ACTION} aria-label="Page actions">
+                <button
+                  type="button"
+                  className={cn(ROW_ACTION, 'max-[899px]:size-9')}
+                  aria-label="Page actions"
+                >
                   <MoreVertical className="size-3.5" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-40">
+                <DropdownMenuItem onClick={() => onCreateChild(node.id)} className="gap-2 text-xs">
+                  <Plus className="size-3.5" />
+                  New child page
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => void onTogglePinned(node.id)}
                   className="cursor-pointer gap-2 text-xs"
