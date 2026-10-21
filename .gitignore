@@ -13,6 +13,7 @@ build/
 # Tauri & Rust
 target/
 src-tauri/target/
+src-tauri/target.noindex/
 src-tauri/gen/
 **/*.rs.bk
 *.pdb

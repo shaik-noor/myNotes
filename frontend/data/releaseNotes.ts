@@ -10,11 +10,11 @@ export interface ReleaseItem {
   }[]
 }
 
-export const APP_VERSION = '1.2.2'
+export const APP_VERSION = '1.2.3'
 
 export const RELEASE_HISTORY: ReleaseItem[] = [
   {
-    version: '1.2.2',
+    version: '1.2.3',
     date: 'October 2026',
     title: 'macOS Installation & Release Verification',
     highlights: [
@@ -30,7 +30,7 @@ export const RELEASE_HISTORY: ReleaseItem[] = [
         badge: 'Releases',
         title: 'Verified Packages & Download Checksums',
         description:
-          'Releases now validate both platforms before publication, verify macOS package integrity, include SHA-256 checksums, and support Developer ID signing and notarization when credentials are configured.'
+          'MacBook releases run local validation and native tests, verify macOS package integrity, include SHA-256 checksums, and support Developer ID signing and notarization when credentials are configured.'
       }
     ]
   },

@@ -8,15 +8,13 @@ if (!['ad-hoc', 'notarized'].includes(mode)) {
 let signingIdentity = '-'
 if (mode === 'notarized') {
   const required = [
-    'APPLE_CERTIFICATE',
-    'APPLE_CERTIFICATE_PASSWORD',
     'APPLE_SIGNING_IDENTITY',
     'APPLE_ID',
     'APPLE_PASSWORD',
     'APPLE_TEAM_ID'
   ]
   const missing = required.filter(name => !process.env[name]?.trim())
-  if (missing.length) throw new Error(`Missing GitHub signing secrets: ${missing.join(', ')}`)
+  if (missing.length) throw new Error(`Missing signing environment variables: ${missing.join(', ')}`)
   signingIdentity = process.env.APPLE_SIGNING_IDENTITY
   if (!signingIdentity.startsWith('Developer ID Application:')) {
     throw new Error('Notarized releases require a Developer ID Application signing identity')

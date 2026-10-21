@@ -23,9 +23,9 @@ if (mode === 'ad-hoc') {
 Use this per-app approval only for a download you trust. Do not disable Gatekeeper globally.
 See the attached MACOS_INSTALL.md for details and Apple's instructions.\n`)
 } else {
-  console.log('**macOS: Developer ID signed and notarized.** The app signature, stapled notarization ticket, Gatekeeper assessment, and DMG integrity were verified before publication.\n')
+  console.log('**macOS: Developer ID signed and notarized.** The local release process verified the app signature, stapled notarization ticket, Gatekeeper assessment, and DMG integrity.\n')
 }
-console.log(`The macOS DMG supports Apple Silicon (M-series Macs). Windows installers support x64.\n
+console.log(`Built and tested locally on the maintainer's MacBook. This release contains a macOS Apple Silicon (M-series) DMG. Windows installers require a separate Windows build machine.\n
 SHA256SUMS.txt contains checksums for the installers and installation guide. Verify a Mac download with:
 
 \`\`\`sh

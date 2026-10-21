@@ -7,7 +7,7 @@ case "$mode" in
   *) echo 'Expected signing mode: ad-hoc or notarized' >&2; exit 1 ;;
 esac
 
-bundle="${2:-src-tauri/target/release/bundle}"
+bundle="${2:-src-tauri/target.noindex/release/bundle}"
 app="$bundle/macos/MyNotes.app"
 test -d "$app"
 codesign --verify --deep --strict --verbose=2 "$app"

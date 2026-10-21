@@ -53,8 +53,22 @@ The default macOS build is ad-hoc signed and is not notarized by Apple. Download
 copies require per-app approval in System Settings → Privacy & Security → Open
 Anyway after copying MyNotes into Applications and attempting to open it once.
 See [macOS installation and release signing](docs/MACOS_INSTALL.md) for download
-verification, installation steps, and notarized release setup. The release workflow
-checks both platform builds before publishing and includes SHA-256 checksums.
+verification, installation steps, and notarized release setup.
+
+Build and test a release locally on an Apple Silicon MacBook:
+
+```sh
+npm run release:mac
+```
+
+This runs validation and native tests, builds and verifies the DMG, and stages the
+installer, installation guide, release description, and SHA-256 checksums under
+`out/releases/v<version>/`. Upload the DMG, guide, and checksums to GitHub Releases
+and use `RELEASE_BODY.md` as the description. GitHub Actions builds are disabled.
+Windows installers need a separate Windows build machine.
+
+Cargo output goes to `src-tauri/target.noindex` so Spotlight does not list the
+development app bundle alongside the installed app in Applications.
 
 ## Google Drive configuration
 

@@ -59,7 +59,7 @@ test('notarized signing fails without credentials and does not write config', ()
   fixture((dir, invoke) => {
     const result = invoke(signingScript, { MACOS_SIGNING: 'notarized' })
     assert.notEqual(result.status, 0)
-    assert.match(result.stderr, /Missing GitHub signing secrets/)
+    assert.match(result.stderr, /Missing signing environment variables/)
     assert.throws(() => readFileSync(join(dir, 'src-tauri/tauri.release.conf.json')))
   })
 })

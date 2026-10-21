@@ -1,7 +1,7 @@
 {
   "name": "mynotes",
   "productName": "MyNotes",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "MyNotes - Personal Knowledge & Document Workspace",
   "author": {
     "name": "Shaik"
@@ -17,6 +17,7 @@
     "tauri:build": "tauri build",
     "bundle:mac": "tauri build --bundles dmg,app",
     "bundle:dmg": "tauri build --bundles dmg",
+    "release:mac": "node scripts/release-macos.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",

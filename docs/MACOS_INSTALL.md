@@ -29,7 +29,7 @@ Download `SHA256SUMS.txt` beside the installer and run this in the download fold
 
 ```sh
 shasum -a 256 -c SHA256SUMS.txt --ignore-missing
-hdiutil verify MyNotes_1.2.2_aarch64.dmg
+hdiutil verify MyNotes_1.2.3_aarch64.dmg
 ```
 
 A matching checksum and a successful DMG verification confirm download integrity.
@@ -41,27 +41,32 @@ Removing the verification warning for downloaded releases requires Apple
 Developer Program membership, a **Developer ID Application** certificate with its
 private key, and Apple notarization credentials.
 
-Add these GitHub Actions repository secrets under **Settings → Secrets and
-variables → Actions** (never commit them or paste them into an issue):
+Install the certificate and private key in the MacBook's login keychain. Set
+these environment variables in your local shell (never commit them):
 
-| Secret | Value |
+| Variable | Value |
 | --- | --- |
-| `APPLE_CERTIFICATE` | Base64-encoded exported `.p12` certificate and private key |
-| `APPLE_CERTIFICATE_PASSWORD` | Password protecting that `.p12` export |
+| `MACOS_SIGNING` | `notarized` |
 | `APPLE_SIGNING_IDENTITY` | Full `Developer ID Application: Name (TEAMID)` identity |
 | `APPLE_ID` | Apple account email for notarization |
 | `APPLE_PASSWORD` | Apple app-specific password for notarization |
 | `APPLE_TEAM_ID` | Apple Developer Team ID |
 
-Set the Actions repository **variable** `MACOS_SIGNING` to `notarized` for future
-tag-triggered releases, or select `notarized` when manually running the Release
-workflow against an existing version tag. The default is `ad-hoc`; its release
-notes explicitly disclose the required manual approval.
+Run `npm run release:mac`. The local release command overrides the development
+signing identity, lets Tauri sign and notarize the app, then verifies the signature,
+hardened runtime, stapled ticket, Gatekeeper acceptance, and DMG integrity.
+Missing credentials or failed checks stop the command before release staging.
+Without membership, use the default `ad-hoc` mode and disclose manual approval.
 
-The workflow overrides the development signing identity, lets Tauri sign and
-notarize the app, then verifies the signature, hardened runtime, stapled ticket,
-Gatekeeper acceptance, and DMG integrity. Missing credentials or failed checks
-stop publication. Both macOS and Windows builds must pass before publication.
-Existing published releases are not overwritten; use a new version tag.
+## Local release process
+
+Builds and tests run on the maintainer's MacBook. GitHub Actions build workflows
+are removed. `npm run release:mac` stages the macOS installer, guide, checksums,
+and release description in `out/releases/v<version>/`. Upload those verified
+files through GitHub Releases. Windows installers require a separate Windows
+build machine; they are not produced by this macOS release command.
+
+Build output is stored in `src-tauri/target.noindex` to keep generated app bundles
+out of Spotlight results. The installed app belongs in `/Applications/MyNotes.app`.
 
 Tauri signing documentation: https://v2.tauri.app/distribute/sign/macos/
