@@ -3,13 +3,8 @@ import type React from 'react'
 import { useState } from 'react'
 import type { Note } from '../../../types/notes'
 import { Button } from '../../ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from '../../ui/dialog'
+import { DialogDescription, DialogHeader, DialogTitle } from '../../ui/dialog'
+import { Sheet, SheetContent } from '../../ui/sheet'
 import { cn } from '../../ui/utils'
 import { BANNER_IMAGES_BY_CATEGORY, resolveCoverImage } from './bannerImages'
 
@@ -77,8 +72,8 @@ const CoverPickerDialog: React.FC<{
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[80vh] max-h-[620px] w-[95vw] flex-col gap-0 overflow-hidden rounded-2xl border p-0 shadow-2xl sm:max-w-[620px]">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="max-w-[620px] gap-0 overflow-hidden p-0">
         <DialogHeader className="shrink-0 space-y-0.5 border-b border-border/40 p-5 text-left">
           <DialogTitle className="flex items-center gap-2 text-base font-bold text-foreground">
             <ImageIcon className="size-4 text-notes" />
@@ -172,8 +167,8 @@ const CoverPickerDialog: React.FC<{
             </div>
           ))}
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -193,7 +188,7 @@ export const CoverBanner: React.FC<CoverAndIconProps> = ({ note, onUpdate }) => 
       )}
 
       {/* Hover action overlay */}
-      <div className="absolute bottom-3 right-6 flex items-center gap-1.5 opacity-0 transition-opacity group-hover/cover:opacity-100">
+      <div className="absolute bottom-3 right-6 flex items-center gap-1.5 opacity-0 transition-opacity group-hover/cover:opacity-100 group-focus-within/cover:opacity-100 max-sm:opacity-100">
         <Button
           size="sm"
           variant="outline"
@@ -247,7 +242,7 @@ export const CoverAndIcon: React.FC<CoverAndIconProps> = ({ note, onUpdate }) =>
           <button
             type="button"
             onClick={() => onUpdate({ icon: undefined })}
-            className="absolute -right-1 -top-1 flex size-4.5 items-center justify-center rounded-full bg-destructive text-white opacity-0 transition-opacity group-hover/icon:opacity-100 shadow-xs cursor-pointer"
+            className="absolute -right-1 -top-1 flex size-4.5 items-center justify-center rounded-full bg-destructive text-white opacity-0 transition-opacity group-hover/icon:opacity-100 group-focus-within/icon:opacity-100 max-sm:opacity-100 shadow-xs cursor-pointer"
             title="Remove icon"
           >
             <X className="size-3" />
@@ -257,7 +252,7 @@ export const CoverAndIcon: React.FC<CoverAndIconProps> = ({ note, onUpdate }) =>
 
       {/* Hover buttons when icon/cover is missing */}
       {(!hasIcon || !hasCover) && (
-        <div className="flex items-center gap-2 pt-1 opacity-0 transition-opacity group-hover/page:opacity-100">
+        <div className="flex items-center gap-2 pt-1 opacity-0 transition-opacity group-hover/page:opacity-100 group-focus-within/page:opacity-100 max-sm:opacity-100">
           {!hasIcon && (
             <button
               type="button"
@@ -282,8 +277,8 @@ export const CoverAndIcon: React.FC<CoverAndIconProps> = ({ note, onUpdate }) =>
       )}
 
       {/* Emoji picker dialog */}
-      <Dialog open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
-        <DialogContent className="max-w-xs p-4 rounded-2xl select-none">
+      <Sheet open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
+        <SheetContent className="max-w-sm select-none">
           <DialogHeader className="mb-3">
             <DialogTitle className="text-sm font-bold">Pick page icon</DialogTitle>
           </DialogHeader>
@@ -302,8 +297,8 @@ export const CoverAndIcon: React.FC<CoverAndIconProps> = ({ note, onUpdate }) =>
               </button>
             ))}
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Cover picker modal */}
       <CoverPickerDialog

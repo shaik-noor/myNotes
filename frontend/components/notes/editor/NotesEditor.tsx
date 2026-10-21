@@ -1,17 +1,14 @@
 import { generateJSON } from '@tiptap/core'
 import { DragHandle } from '@tiptap/extension-drag-handle-react'
 import { type Editor, EditorContent, useEditor } from '@tiptap/react'
-import { BubbleMenu } from '@tiptap/react/menus'
 import { GripVertical } from 'lucide-react'
 import type React from 'react'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { ContextMenu, ContextMenuTrigger } from '../../ui/context-menu'
-import { CodeLanguageBar } from './CodeLanguageBar'
 import { buildEditorExtensions } from './editorExtensions'
 import { buildNotesEditorProps } from './editorProps'
-import { FindReplaceBar } from './FindReplaceBar'
 import { LinkPopover } from './LinkPopover'
-import { decodeHtmlEntities, looksLikeLegacyHtml } from './legacyHtmlContent'
+import { decodeHtmlEntities, looksLikeLegacyHtml } from './legacyHtmlDetect'
 import { SelectionBubbleMenu } from './SelectionBubbleMenu'
 import { TableControls } from './TableControls'
 import { TableHoverControls } from './TableHoverControls'
@@ -53,7 +50,6 @@ interface NotesEditorProps {
   onEditorReady: (editor: Editor | null) => void
   onChange: (markdown: string) => void
   onContextMenu?: (e: React.MouseEvent) => void
-  onRewrite: (editor: Editor) => void
 }
 
 export const NotesEditor: React.FC<NotesEditorProps> = ({
@@ -62,19 +58,24 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
   fontClass,
   onEditorReady,
   onChange,
-  onContextMenu,
-  onRewrite
+  onContextMenu
 }) => {
   const lastAppliedMdRef = useRef<string>('')
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const extensions = useMemo(() => buildEditorExtensions(noteId), [noteId])
   const editor = useEditor({
     shouldRerenderOnTransaction: false,
-    extensions: buildEditorExtensions(noteId),
+    extensions,
     content: '',
     editorProps: {
       ...buildNotesEditorProps(noteId),
-      attributes: { class: 'tiptap focus:outline-none' }
+      attributes: {
+        class: 'tiptap focus:outline-none',
+        role: 'textbox',
+        'aria-label': 'Page content',
+        'aria-multiline': 'true'
+      }
     },
     onUpdate: ({ editor }) => {
       const md = getMarkdown(editor)
@@ -87,12 +88,6 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
     onEditorReady(editor && !editor.isDestroyed ? editor : null)
     return () => onEditorReady(null)
   }, [editor, onEditorReady])
-
-  useEffect(() => {
-    if (!editor || editor.isDestroyed) return
-    applyContent(editor, content)
-    lastAppliedMdRef.current = getMarkdown(editor)
-  }, [editor, noteId])
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return
@@ -123,8 +118,6 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
 
   return (
     <div ref={containerRef} className={`relative ${fontClass}`}>
-      <FindReplaceBar editor={editor} />
-
       <ContextMenu>
         <ContextMenuTrigger asChild onContextMenu={handleContextMenu}>
           <EditorContent editor={editor} />
@@ -134,27 +127,14 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
 
       <TableHoverControls editor={editor} containerRef={containerRef} />
 
-      <SelectionBubbleMenu
-        editor={editor}
-        currentNoteId={noteId}
-        onRewrite={() => onRewrite(editor)}
-      />
+      <SelectionBubbleMenu editor={editor} currentNoteId={noteId} />
       <LinkPopover editor={editor} />
 
       <DragHandle editor={editor}>
-        <div className="mydesk-drag-handle is-visible">
+        <div className="mydesk-drag-handle">
           <GripVertical className="size-4" />
         </div>
       </DragHandle>
-
-      <BubbleMenu
-        editor={editor}
-        pluginKey="codeLanguageBar"
-        options={{ placement: 'top', offset: 8 }}
-        shouldShow={({ editor: ed }) => ed.isActive('codeBlock')}
-      >
-        <CodeLanguageBar editor={editor} />
-      </BubbleMenu>
     </div>
   )
 }

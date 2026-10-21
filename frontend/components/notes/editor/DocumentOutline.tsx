@@ -11,12 +11,17 @@ interface OutlineHeading {
 interface DocumentOutlineProps {
   editor: Editor
   onClose: () => void
+  onNavigate?: () => void
 }
 
 /**
  * The "On this page" outline (table of contents) derived from the note's headings.
  */
-export const DocumentOutline: React.FC<DocumentOutlineProps> = ({ editor, onClose }) => {
+export const DocumentOutline: React.FC<DocumentOutlineProps> = ({
+  editor,
+  onClose,
+  onNavigate
+}) => {
   const headings = useEditorState({
     editor,
     selector: ({ editor }): OutlineHeading[] => {
@@ -31,22 +36,28 @@ export const DocumentOutline: React.FC<DocumentOutlineProps> = ({ editor, onClos
   })
 
   const jumpTo = (pos: number): void => {
-    try {
-      const target = Math.min(pos + 1, editor.state.doc.content.size)
-      editor.chain().focus().setTextSelection(target).run()
-      const dom = editor.view.domAtPos(target).node as HTMLElement
-      const el = dom.nodeType === 1 ? dom : dom.parentElement
-      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    } catch {
-      /* stale outline entry — ignore */
-    }
+    onNavigate?.()
+    requestAnimationFrame(() => {
+      try {
+        const target = Math.min(pos + 1, editor.state.doc.content.size)
+        editor.chain().focus().setTextSelection(target).run()
+        const dom = editor.view.domAtPos(target).node as HTMLElement
+        const el = dom.nodeType === 1 ? dom : dom.parentElement
+        el?.scrollIntoView({
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            ? 'auto'
+            : 'smooth',
+          block: 'start'
+        })
+      } catch {
+        /* A heading may have been removed since this outline was rendered. */
+      }
+    })
   }
 
   const header = (
     <div className="flex items-center justify-between gap-2 pb-1 pl-2 pt-0.5">
-      <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-        On this page
-      </span>
+      <span className="text-xs font-medium text-muted-foreground">On this page</span>
       <button
         type="button"
         onClick={onClose}
@@ -76,10 +87,10 @@ export const DocumentOutline: React.FC<DocumentOutlineProps> = ({ editor, onClos
   return (
     <nav aria-label="On this page" className="flex flex-col gap-0.5 p-2">
       {header}
-      {headings.map((h, i) => (
+      {headings.map((h) => (
         <button
           type="button"
-          key={i}
+          key={h.pos}
           onClick={() => jumpTo(h.pos)}
           style={{ paddingLeft: `${(h.level - 1) * 12 + 8}px` }}
           className="truncate rounded-lg py-1.5 pr-2 text-left text-xs font-medium text-muted-foreground transition-all hover:bg-accent hover:text-foreground cursor-pointer select-none"

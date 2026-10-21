@@ -9,6 +9,7 @@ interface TitleInputProps {
 export const TitleInput: React.FC<TitleInputProps> = ({ value, onChange }) => {
   const ref = useRef<HTMLTextAreaElement>(null)
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Resize the textarea whenever its value changes.
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return

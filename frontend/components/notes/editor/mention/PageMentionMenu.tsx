@@ -28,6 +28,7 @@ export const PageMentionMenu = forwardRef<PageMentionHandle, PageMentionProps>(
     const containerRef = useRef<HTMLDivElement>(null)
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: Reset keyboard selection when the page results change.
     useEffect(() => setSelectedIndex(0), [items])
 
     useLayoutEffect(() => {
@@ -60,7 +61,7 @@ export const PageMentionMenu = forwardRef<PageMentionHandle, PageMentionProps>(
 
     if (items.length === 0) {
       return (
-        <div className="z-50 relative w-64 rounded-lg bg-popover p-3 text-2xs text-muted-foreground shadow-2xl ring-1 ring-foreground/10 border border-border/80 backdrop-blur-2xl">
+        <div className="editor-tool-surface z-50 relative w-64 max-w-[calc(100vw-2rem)] rounded-lg bg-popover p-3 text-2xs text-muted-foreground shadow-2xl ring-1 ring-foreground/10 border border-border/80 backdrop-blur-2xl">
           No matching pages
         </div>
       )
@@ -69,7 +70,7 @@ export const PageMentionMenu = forwardRef<PageMentionHandle, PageMentionProps>(
     return (
       <div
         ref={containerRef}
-        className="z-50 relative max-h-80 w-72 overflow-y-auto rounded-lg bg-popover p-1.5 text-popover-foreground shadow-2xl ring-1 ring-foreground/10 border border-border/80 backdrop-blur-2xl"
+        className="editor-tool-surface z-50 relative max-h-80 w-72 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg bg-popover p-1.5 text-popover-foreground shadow-2xl ring-1 ring-foreground/10 border border-border/80 backdrop-blur-2xl"
       >
         {items.map((item, index) => {
           const isActive = index === selectedIndex

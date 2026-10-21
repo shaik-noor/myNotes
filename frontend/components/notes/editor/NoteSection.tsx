@@ -42,7 +42,7 @@ export function NoteSection({
       <span className="flex size-6 items-center justify-center rounded-md border border-notes/20 bg-notes/10 text-notes">
         <Icon className="size-3.5" />
       </span>
-      <span className="text-2xs font-bold uppercase tracking-wider text-muted-foreground transition-colors group-hover/section:text-foreground">
+      <span className="text-xs font-semibold text-muted-foreground transition-colors group-hover/section:text-foreground">
         {label}
       </span>
       {count !== undefined && count > 0 && (

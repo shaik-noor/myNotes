@@ -1,7 +1,9 @@
 import type { Editor } from '@tiptap/react'
 import { Check, ExternalLink, Link as LinkIcon, Trash2 } from 'lucide-react'
 import type React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { externalLink } from '../../../services/links'
+import { toast } from '../../ui/toast'
 import { Button } from '../../ui/button'
 import { Popover, PopoverAnchor, PopoverContent } from '../../ui/popover'
 import { OPEN_LINK_POPOVER_EVENT } from './editorExtensions'
@@ -19,7 +21,7 @@ export const LinkPopover: React.FC<LinkPopoverProps> = ({ editor }) => {
   const [rect, setRect] = useState<DOMRect | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const openForSelection = (): void => {
+  const openForSelection = useCallback((): void => {
     const { from, to } = editor.state.selection
     const start = editor.view.coordsAtPos(from)
     const end = editor.view.coordsAtPos(to)
@@ -33,13 +35,13 @@ export const LinkPopover: React.FC<LinkPopoverProps> = ({ editor }) => {
     )
     setUrl(editor.getAttributes('link').href || '')
     setOpen(true)
-  }
+  }, [editor])
 
   useEffect(() => {
     const handler = (): void => openForSelection()
     window.addEventListener(OPEN_LINK_POPOVER_EVENT, handler)
     return () => window.removeEventListener(OPEN_LINK_POPOVER_EVENT, handler)
-  }, [editor])
+  }, [openForSelection])
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 0)
@@ -47,6 +49,14 @@ export const LinkPopover: React.FC<LinkPopoverProps> = ({ editor }) => {
 
   const apply = (): void => {
     const trimmed = url.trim()
+    if (
+      trimmed &&
+      !externalLink(trimmed) &&
+      !/^(mynotes|mydesk-note|mynotes-attachment|mydesk-attachment):[A-Za-z0-9_-]+$/.test(trimmed)
+    ) {
+      toast.error('Enter a valid website or email link')
+      return
+    }
     if (trimmed) {
       editor.chain().focus().extendMarkRange('link').setLink({ href: trimmed }).run()
     } else {
@@ -81,6 +91,7 @@ export const LinkPopover: React.FC<LinkPopoverProps> = ({ editor }) => {
           <input
             ref={inputRef}
             type="url"
+            aria-label="Link address"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => {
@@ -94,10 +105,13 @@ export const LinkPopover: React.FC<LinkPopoverProps> = ({ editor }) => {
             placeholder="Paste or type a URL…"
             className="min-w-0 flex-1 bg-transparent px-1 text-xs text-foreground outline-none placeholder:text-muted-foreground/60"
           />
-          {hasLink && url.trim() && (
+          {hasLink && externalLink(url) && (
             <button
               type="button"
-              onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+              onClick={() => {
+                const safeUrl = externalLink(url)
+                if (safeUrl) window.open(safeUrl, '_blank', 'noopener,noreferrer')
+              }}
               className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
               title="Open link"
               aria-label="Open link"

@@ -11,6 +11,10 @@ export const OPEN_PAGE_PEEK_EVENT = 'notes:open-page-peek'
 
 async function attachAndInsertFile(view: EditorView, noteId: string, file: File): Promise<void> {
   try {
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error('File is too large', { description: 'Choose a file smaller than 25 MB.' })
+      return
+    }
     const bytes = new Uint8Array(await file.arrayBuffer())
     const att = await NoteAttachmentsService.attachBytes(noteId, file.name || 'file', bytes)
     if (!att) {

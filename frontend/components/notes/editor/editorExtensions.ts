@@ -20,7 +20,6 @@ import { ReactNodeViewRenderer } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { common, createLowlight } from 'lowlight'
 import { Markdown } from 'tiptap-markdown'
-import { AiGhost } from './aiGhost'
 import { CodeBlockView } from './CodeBlockView'
 import { CustomTable } from './customTable'
 import { PageMention } from './mention/pageMention'
@@ -46,7 +45,7 @@ const LinkShortcut = Extension.create({
 
 export function buildEditorExtensions(noteId: string): AnyExtension[] {
   return [
-    StarterKit.configure({ codeBlock: false }),
+    StarterKit.configure({ codeBlock: false, link: false, underline: false }),
     CodeBlockLowlight.configure({ lowlight }).extend({
       addNodeView() {
         return ReactNodeViewRenderer(CodeBlockView)
@@ -79,7 +78,7 @@ export function buildEditorExtensions(noteId: string): AnyExtension[] {
       }
     }),
     TaskList,
-    TaskItem.configure({ nested: true, HTMLAttributes: { class: 'flex items-start gap-2 my-1' } }),
+    TaskItem.configure({ nested: true }),
     CustomTable.configure({ resizable: true, cellMinWidth: 80 }),
     TableRow,
     TableCell,
@@ -94,7 +93,6 @@ export function buildEditorExtensions(noteId: string): AnyExtension[] {
       transformPastedText: true,
       transformCopiedText: false
     }),
-    AiGhost,
     SearchHighlight,
     LinkShortcut,
     SlashCommand.configure({ noteId }),

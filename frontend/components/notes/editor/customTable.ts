@@ -1,7 +1,20 @@
 import { Table } from '@tiptap/extension-table'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 
-export function serializeTableToMarkdown(state: any, node: ProseMirrorNode): void {
+export function serializeTableToMarkdown(
+  state: {
+    inTable: boolean
+    out: string
+    write: (value?: string) => void
+    ensureNewLine: () => void
+    closeBlock: (node: ProseMirrorNode) => void
+    render: (node: ProseMirrorNode, parent: ProseMirrorNode, index: number) => void
+    renderInline: (node: ProseMirrorNode) => void
+  },
+  node: ProseMirrorNode
+): void {
+  // Flush the previous block before temporarily collecting individual cell text.
+  state.write()
   state.inTable = true
   const rows: ProseMirrorNode[] = []
   node.forEach((row: ProseMirrorNode) => {
@@ -23,13 +36,13 @@ export function serializeTableToMarkdown(state: any, node: ProseMirrorNode): voi
     const prevOut = state.out
     state.out = ''
     let first = true
-    cell.forEach((child: ProseMirrorNode) => {
+    cell.forEach((child: ProseMirrorNode, _offset: number, index: number) => {
       if (!first) {
         state.write('<br>')
       }
       first = false
       if (child.isInline) {
-        state.render(child, cell)
+        state.render(child, cell, index)
       } else {
         state.renderInline(child)
       }
@@ -92,7 +105,7 @@ export function serializeTableToMarkdown(state: any, node: ProseMirrorNode): voi
       cells.push(' ')
     }
 
-    state.write('| ' + cells.join(' | ') + ' |')
+    state.write(`| ${cells.join(' | ')} |`)
     state.ensureNewLine()
 
     if (isFirst && hasHeader) {
@@ -102,7 +115,7 @@ export function serializeTableToMarkdown(state: any, node: ProseMirrorNode): voi
     isFirst = false
   })
 
-  state.ensureNewLine()
+  state.closeBlock(node)
   state.inTable = false
 }
 

@@ -6,7 +6,6 @@ import {
   Download,
   FileText,
   Focus,
-  Home,
   ListTree,
   MoreHorizontal,
   Pin,
@@ -26,17 +25,15 @@ import {
 import { StatusDot } from '../../ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
 import { cn } from '../../ui/utils'
+import { OPEN_FIND_REPLACE_EVENT } from './searchHighlight'
 import { HeaderSearchBox } from './HeaderSearchBox'
 
 interface DocumentHeaderProps {
-  title: string
-  saveStatus: 'saved' | 'saving'
+  saveStatus: 'saved' | 'saving' | 'error'
   /** Whether the note has sub-pages (is a Book). */
   isBook?: boolean
   /** Number of sub-pages if this note is a Book. */
   subPageCount?: number
-  /** Whether this note is a sub-page of another note. */
-  isSubPage?: boolean
   /** Whether the note has any content (gates "Copy as Markdown"). */
   hasContent: boolean
   focusMode: boolean
@@ -47,7 +44,6 @@ interface DocumentHeaderProps {
   fullWidth: boolean
   /** The editor instance — powers the always-visible "Search this page" box. */
   editor: Editor | null
-  onNavigateHome?: () => void
   onToggleFocus: () => void
   onToggleOutline: () => void
   onToggleFullWidth: () => void
@@ -98,18 +94,15 @@ function HeaderToggle({
  * The slim, sticky document-level header.
  */
 export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
-  title,
   saveStatus,
   isBook = false,
   subPageCount = 0,
-  isSubPage = false,
   hasContent,
   focusMode,
   outlineOpen,
   pinned,
   fullWidth,
   editor,
-  onNavigateHome,
   onToggleFocus,
   onToggleOutline,
   onToggleFullWidth,
@@ -119,32 +112,17 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
   onExport,
   onDelete
 }) => {
-  const kind = isBook ? 'Book' : isSubPage ? 'Page' : 'Note'
+  const kind = isBook ? 'Notebook' : 'Page'
   const KindIcon = isBook ? BookOpen : FileText
   const saving = saveStatus === 'saving'
 
   return (
     <div
       data-slot="note-doc-header"
-      className="sticky top-0 z-10 flex h-11 shrink-0 items-center justify-between gap-4 border-b border-border/50 bg-background/80 px-4 backdrop-blur-xl select-none transition-colors transform-[translateZ(0)] isolation-isolate md:px-6"
+      className="sticky top-0 z-10 flex h-11 shrink-0 items-center justify-between gap-2 bg-background px-3 select-none transition-colors transform-[translateZ(0)] isolation-isolate md:px-6"
     >
       {/* Kind + title + save state */}
       <div className="flex min-w-0 items-center gap-2 text-xs">
-        {onNavigateHome && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onNavigateHome}
-                className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
-                aria-label="Home Dashboard"
-              >
-                <Home className="size-3.5 text-notes" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Home Dashboard (⌘H)</TooltipContent>
-          </Tooltip>
-        )}
         <span
           className={cn(
             'inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-2xs font-semibold',
@@ -159,29 +137,32 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
             <span className="font-medium tabular-nums opacity-80">· {subPageCount}</span>
           )}
         </span>
-        <span className="truncate font-medium text-foreground" title={title || undefined}>
-          {title || `Untitled ${kind.toLowerCase()}`}
-        </span>
         <Tooltip>
           <TooltipTrigger asChild>
             <span role="status" aria-live="polite" className="flex shrink-0 items-center">
               <StatusDot
-                tone={saving ? 'running' : 'done'}
+                tone={saveStatus === 'error' ? 'error' : saving ? 'running' : 'done'}
                 pulse={saving}
-                label={saving ? 'Saving…' : 'Saved'}
+                label={saveStatus === 'error' ? 'Not saved' : saving ? 'Saving…' : 'Saved'}
                 className="text-2xs font-medium text-muted-foreground"
               />
             </span>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            {saving ? 'Saving…' : 'All changes saved · Ctrl+S to save now'}
+            {saveStatus === 'error'
+              ? 'Could not save. Press Ctrl+S or ⌘S to try again.'
+              : saving
+                ? 'Saving…'
+                : 'All changes saved'}
           </TooltipContent>
         </Tooltip>
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
         {/* Always-visible "search this page" box */}
-        <HeaderSearchBox editor={editor} />
+        <div className="hidden md:block">
+          <HeaderSearchBox editor={editor} />
+        </div>
 
         {/* View cluster */}
         <div className="hidden items-center gap-0.5 rounded-lg border border-border/50 bg-muted/40 p-0.5 sm:flex">
@@ -237,6 +218,21 @@ export const DocumentHeader: React.FC<DocumentHeaderProps> = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-48">
+            <DropdownMenuItem
+              onClick={() => window.dispatchEvent(new Event(OPEN_FIND_REPLACE_EVENT))}
+              className="md:hidden"
+            >
+              Find in page
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onToggleOutline} className="sm:hidden">
+              {outlineOpen ? 'Hide outline' : 'Show outline'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onToggleFullWidth} className="sm:hidden">
+              {fullWidth ? 'Use centered page' : 'Use full width'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onToggleFocus} className="sm:hidden">
+              {focusMode ? 'Exit focus mode' : 'Focus mode'}
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={onTogglePinned}
               className="cursor-pointer gap-2 text-xs sm:hidden"

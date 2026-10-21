@@ -12,8 +12,11 @@ export const NoteImageView: React.FC<NodeViewProps> = ({ node, selected }) => {
 
   const [resolved, setResolved] = useState<string | null>(attachmentId ? null : rawSrc)
   const [failed, setFailed] = useState(false)
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null)
 
   useEffect(() => {
+    setFailed(false)
+    setLoadedSrc(null)
     if (!attachmentId) {
       setResolved(rawSrc)
       return
@@ -33,6 +36,8 @@ export const NoteImageView: React.FC<NodeViewProps> = ({ node, selected }) => {
     }
   }, [attachmentId, rawSrc])
 
+  const loading = !failed && (!resolved || loadedSrc !== resolved)
+
   return (
     <NodeViewWrapper as="div" className="relative my-4" data-drag-handle>
       {failed ? (
@@ -40,15 +45,26 @@ export const NoteImageView: React.FC<NodeViewProps> = ({ node, selected }) => {
           <ImageOff className="size-4 shrink-0" />
           <span className="truncate">Image unavailable{alt ? ` — ${alt}` : ''}</span>
         </div>
-      ) : resolved ? (
-        <img
-          src={resolved}
-          alt={alt}
-          className={selected ? 'ProseMirror-selectednode' : undefined}
-        />
       ) : (
-        <div className="flex items-center justify-center rounded-lg border border-border/40 bg-muted/30 py-8">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <div className={loading ? 'relative min-h-24' : 'relative'} aria-busy={loading}>
+          {resolved && (
+            <img
+              src={resolved}
+              alt={alt}
+              onLoad={() => setLoadedSrc(resolved)}
+              onError={() => setFailed(true)}
+              className={`editor-image ${loadedSrc === resolved ? 'is-loaded' : ''} ${selected ? 'ProseMirror-selectednode' : ''}`}
+            />
+          )}
+          {loading && (
+            <div
+              role="status"
+              className="absolute inset-0 flex items-center justify-center rounded-lg border border-border/40 bg-muted/30"
+            >
+              <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+              <span className="sr-only">Loading image</span>
+            </div>
+          )}
         </div>
       )}
     </NodeViewWrapper>

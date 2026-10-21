@@ -6,11 +6,11 @@ import {
   FileOutput,
   Italic,
   Link as LinkIcon,
-  Sparkles,
   Strikethrough,
   Underline as UnderlineIcon
 } from 'lucide-react'
 import type React from 'react'
+import { useRef } from 'react'
 import { useNotesStore } from '../../../store/useNotesStore'
 import { toast } from '../../ui/toast'
 import { OPEN_LINK_POPOVER_EVENT } from './editorExtensions'
@@ -18,7 +18,6 @@ import { OPEN_LINK_POPOVER_EVENT } from './editorExtensions'
 interface SelectionBubbleMenuProps {
   editor: Editor
   currentNoteId: string | null
-  onRewrite: () => void
 }
 
 const MarkButton: React.FC<{
@@ -31,8 +30,9 @@ const MarkButton: React.FC<{
     type="button"
     onMouseDown={(e) => {
       e.preventDefault()
-      onClick()
     }}
+    onClick={onClick}
+    aria-pressed={active}
     title={title}
     aria-label={title}
     className={`flex size-7 items-center justify-center rounded-md transition-colors cursor-pointer ${
@@ -47,9 +47,9 @@ const MarkButton: React.FC<{
 
 export const SelectionBubbleMenu: React.FC<SelectionBubbleMenuProps> = ({
   editor,
-  currentNoteId,
-  onRewrite
+  currentNoteId
 }) => {
+  const menuRef = useRef<HTMLDivElement>(null)
   const active = useEditorState({
     editor,
     selector: ({ editor: ed }) => ({
@@ -64,6 +64,7 @@ export const SelectionBubbleMenu: React.FC<SelectionBubbleMenuProps> = ({
 
   const handleTurnIntoPage = async (): Promise<void> => {
     const { from, to } = editor.state.selection
+    const originalDocument = editor.state.doc
     const title = editor.state.doc.textBetween(from, to, ' ').trim()
     if (!title) {
       toast.error('No text selected', { description: 'Select text to turn into a page.' })
@@ -76,12 +77,18 @@ export const SelectionBubbleMenu: React.FC<SelectionBubbleMenuProps> = ({
 
     try {
       const newId = await useNotesStore.getState().createLinkedChildPage(title, currentNoteId)
+      if (!newId || editor.isDestroyed) return
+      if (!editor.state.doc.eq(originalDocument)) {
+        toast.success('Page created', {
+          description: 'Your selected text was kept because the note changed.'
+        })
+        return
+      }
       const href = `mynotes:${newId}`
       editor
         .chain()
         .focus()
-        .deleteSelection()
-        .insertContent([
+        .insertContentAt({ from, to }, [
           {
             type: 'text',
             text: title,
@@ -104,12 +111,16 @@ export const SelectionBubbleMenu: React.FC<SelectionBubbleMenuProps> = ({
       editor={editor}
       options={{ placement: 'top' }}
       shouldShow={({ editor: ed, from, to }) => {
+        if (!ed.isFocused && !menuRef.current?.contains(document.activeElement)) return false
         if (from === to) return false
         if (ed.isActive('codeBlock')) return false
         return true
       }}
     >
-      <div className="rounded-xl border border-border/60 bg-popover/95 p-1.5 shadow-xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 text-popover-foreground">
+      <div
+        ref={menuRef}
+        className="rounded-xl border border-border/60 bg-popover/95 p-1.5 shadow-xl backdrop-blur-md editor-tool-surface text-popover-foreground"
+      >
         <div className="flex items-center gap-0.5">
           <MarkButton
             active={active.bold}
@@ -168,21 +179,6 @@ export const SelectionBubbleMenu: React.FC<SelectionBubbleMenuProps> = ({
           >
             <FileOutput className="size-3.5" />
           </MarkButton>
-
-          <div className="mx-0.5 h-4 w-px bg-border/60" />
-
-          <button
-            type="button"
-            onMouseDown={(e) => {
-              e.preventDefault()
-              onRewrite()
-            }}
-            className="flex h-7 items-center gap-1.5 rounded-md bg-notes/10 px-2.5 text-xs font-medium text-notes transition-colors hover:bg-notes/20 cursor-pointer"
-            title="Improve writing with AI"
-          >
-            <Sparkles className="size-3.5" />
-            Improve writing
-          </button>
         </div>
       </div>
     </BubbleMenu>

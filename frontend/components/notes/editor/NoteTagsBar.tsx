@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion'
 import { Hash, Plus, X } from 'lucide-react'
 import type React from 'react'
 import { useRef, useState } from 'react'
@@ -38,23 +39,29 @@ export const NoteTagsBar: React.FC<NoteTagsBarProps> = ({ tags, onChange }) => {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          className="group/tag inline-flex items-center gap-0.5 rounded-full border border-notes/25 bg-notes/8 py-0.5 pr-1 pl-1.5 text-2xs font-medium text-notes"
-        >
-          <Hash className="size-2.5 opacity-70" />
-          {tag}
-          <button
-            type="button"
-            onClick={() => remove(tag)}
-            className="ml-0.5 flex size-3.5 cursor-pointer items-center justify-center rounded-full opacity-50 transition-opacity hover:bg-destructive/10 hover:text-destructive hover:opacity-100 group-hover/tag:opacity-100"
-            aria-label={`Remove tag ${tag}`}
+      <AnimatePresence initial={false}>
+        {tags.map((tag) => (
+          <motion.span
+            initial={{ opacity: 0, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.14 }}
+            key={tag}
+            className="group/tag inline-flex items-center gap-0.5 rounded-full border border-notes/25 bg-notes/8 py-0.5 pr-1 pl-1.5 text-2xs font-medium text-notes"
           >
-            <X className="size-2.5" />
-          </button>
-        </span>
-      ))}
+            <Hash className="size-2.5 opacity-70" />
+            {tag}
+            <button
+              type="button"
+              onClick={() => remove(tag)}
+              className="ml-0.5 flex size-3.5 cursor-pointer items-center justify-center rounded-full opacity-50 transition-opacity hover:bg-destructive/10 hover:text-destructive hover:opacity-100 group-hover/tag:opacity-100"
+              aria-label={`Remove tag ${tag}`}
+            >
+              <X className="size-2.5" />
+            </button>
+          </motion.span>
+        ))}
+      </AnimatePresence>
 
       {adding ? (
         <input
@@ -85,7 +92,7 @@ export const NoteTagsBar: React.FC<NoteTagsBarProps> = ({ tags, onChange }) => {
           aria-label="Add a tag"
         >
           <Plus className="size-2.5" />
-          {tags.length === 0 ? 'Add tag' : 'Tag'}
+          Add tag
         </button>
       )}
     </div>

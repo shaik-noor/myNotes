@@ -27,7 +27,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
           <button
             type="button"
             onClick={onNavigateHome}
-            title="Workspace Home Dashboard"
+            title="Home"
             className="flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted/60 hover:text-foreground"
           >
             <Home className="size-3.5 text-notes" />

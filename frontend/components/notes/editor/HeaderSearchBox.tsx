@@ -28,7 +28,7 @@ export const HeaderSearchBox: React.FC<HeaderSearchBoxProps> = ({ editor }) => {
     }) ?? EMPTY
 
   useEffect(() => {
-    if (document.activeElement !== inputRef.current && state.query !== query) {
+    if (document.activeElement !== inputRef.current) {
       setQuery(state.query)
     }
   }, [state.query])
