@@ -50,7 +50,7 @@ let notes = new URLSearchParams(location.search).has('empty')
       )
     ]
 let settings: AppSettings = {
-  theme: 'light',
+  theme: new URLSearchParams(location.search).get('theme') === 'dark' ? 'dark' : 'light',
   palette: 'blue',
   fontClass: 'font-sans-editor',
   fullWidthDefault: false,
