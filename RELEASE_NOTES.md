@@ -1,4 +1,4 @@
-# Release Notes: MyNotes v1.2.1
+# Release Notes: MyNotes v1.2.2
 
 **Release Date:** October 22, 2026
 

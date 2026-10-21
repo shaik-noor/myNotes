@@ -9,7 +9,8 @@ if (read('src-tauri/tauri.conf.json').version !== version) {
   throw new Error('Tauri and npm versions must match')
 }
 const cargo = readFileSync('src-tauri/Cargo.toml', 'utf8')
-if (!cargo.includes(`\nversion = "${version}"\n`)) throw new Error('Cargo version must match npm')
+const cargoVersion = cargo.match(/^version\s*=\s*"([^"]+)"\s*$/m)?.[1]
+if (cargoVersion !== version) throw new Error('Cargo version must match npm')
 if (!['ad-hoc', 'notarized'].includes(mode)) throw new Error('Unknown macOS signing mode')
 
 console.log(`# MyNotes ${tag}\n`)

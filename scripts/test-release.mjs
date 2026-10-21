@@ -47,6 +47,14 @@ test('release refuses inconsistent native versions', () => {
   })
 })
 
+test('version check accepts Windows CRLF line endings', () => {
+  fixture((dir, invoke) => {
+    writeFileSync(join(dir, 'src-tauri/Cargo.toml'), '[package]\r\nversion = "1.2.1"\r\n')
+    const result = invoke(notesScript, { RELEASE_TAG: 'v1.2.1', MACOS_SIGNING: 'ad-hoc' })
+    assert.equal(result.status, 0, result.stderr)
+  })
+})
+
 test('notarized signing fails without credentials and does not write config', () => {
   fixture((dir, invoke) => {
     const result = invoke(signingScript, { MACOS_SIGNING: 'notarized' })

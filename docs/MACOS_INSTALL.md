@@ -29,7 +29,7 @@ Download `SHA256SUMS.txt` beside the installer and run this in the download fold
 
 ```sh
 shasum -a 256 -c SHA256SUMS.txt --ignore-missing
-hdiutil verify MyNotes_1.2.1_aarch64.dmg
+hdiutil verify MyNotes_1.2.2_aarch64.dmg
 ```
 
 A matching checksum and a successful DMG verification confirm download integrity.

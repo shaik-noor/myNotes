@@ -1,6 +1,6 @@
 [package]
 name = "mynotes"
-version = "1.2.1"
+version = "1.2.2"
 description = "MyNotes - Personal Knowledge & Document Workspace"
 authors = ["Shaik"]
 edition = "2021"

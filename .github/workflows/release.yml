@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing version tag to build (e.g. v1.2.1)'
+        description: 'Existing version tag to build (e.g. v1.2.2)'
         required: true
-        default: 'v1.2.1'
+        default: 'v1.2.2'
       macos_signing:
         description: 'Ad-hoc builds require Open Anyway on macOS'
         type: choice
@@ -55,7 +55,7 @@ jobs:
       - name: Check release version
         shell: bash
         run: |
-          node --test scripts/release.test.mjs
+          node --test scripts/test-release.mjs
           node scripts/release-notes.mjs > release-body.md
 
       - name: Configure macOS SDK
