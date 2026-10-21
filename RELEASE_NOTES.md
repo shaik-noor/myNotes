@@ -1,3 +1,18 @@
+# Release Notes: MyNotes v1.2.1
+
+**Release Date:** October 22, 2026
+
+- Verified the published v1.2.0 DMG: its disk-image checksum and ad-hoc app signature are valid. The Apple warning is caused by missing Developer ID signing and notarization.
+- Added [macOS installation instructions](docs/MACOS_INSTALL.md), including the per-app Open Anyway flow and checksum verification.
+- Release assets now include `SHA256SUMS.txt` and `MACOS_INSTALL.md`.
+- Both platform builds, app validation, native tests, macOS signature, and disk-image integrity must pass before publication.
+- Corrected manual release tag selection and require version/tag consistency.
+- Added optional Developer ID signing and notarization, with credential and Gatekeeper checks before publication.
+
+**macOS remains ad-hoc signed and unnotarized by default. This release does not remove Apple's verification warning.** Removing it requires Apple Developer membership and notarization credentials.
+
+---
+
 # Release Notes: MyNotes v1.2.0
 
 **Release Date:** October 21, 2026

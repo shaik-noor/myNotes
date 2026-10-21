@@ -4,6 +4,7 @@ node_modules/
 .pnp.js
 
 # Build Outputs
+src-tauri/tauri.release.conf.json
 dist/
 dist-ssr/
 out/

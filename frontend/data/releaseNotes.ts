@@ -10,9 +10,30 @@ export interface ReleaseItem {
   }[]
 }
 
-export const APP_VERSION = '1.2.0'
+export const APP_VERSION = '1.2.1'
 
 export const RELEASE_HISTORY: ReleaseItem[] = [
+  {
+    version: '1.2.1',
+    date: 'October 2026',
+    title: 'macOS Installation & Release Verification',
+    highlights: [
+      {
+        category: 'fixes',
+        badge: 'Installation',
+        title: 'Clear macOS Approval Instructions',
+        description:
+          'macOS downloads are ad-hoc signed and require Open Anyway in Privacy & Security. The installation guide explains the Apple verification warning and how to check download integrity.'
+      },
+      {
+        category: 'fixes',
+        badge: 'Releases',
+        title: 'Verified Packages & Download Checksums',
+        description:
+          'Releases now validate both platforms before publication, verify macOS package integrity, include SHA-256 checksums, and support Developer ID signing and notarization when credentials are configured.'
+      }
+    ]
+  },
   {
     version: '1.2.0',
     date: 'October 2026',

@@ -49,7 +49,12 @@ Build the desktop application with:
 npm run tauri:build
 ```
 
-The repository’s current macOS signing configuration is for development. Distribution requires release signing and notarization setup.
+The default macOS build is ad-hoc signed and is not notarized by Apple. Downloaded
+copies require per-app approval in System Settings → Privacy & Security → Open
+Anyway after copying MyNotes into Applications and attempting to open it once.
+See [macOS installation and release signing](docs/MACOS_INSTALL.md) for download
+verification, installation steps, and notarized release setup. The release workflow
+checks both platform builds before publishing and includes SHA-256 checksums.
 
 ## Google Drive configuration
 
