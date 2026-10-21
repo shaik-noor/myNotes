@@ -1,39 +1,39 @@
-# Installing MyNotes on macOS
+# Building MyNotes on macOS
 
-The macOS download is for Apple Silicon (M-series Macs). Check the release notes
-for its signing status. Releases marked **ad-hoc signed** lack an Apple Developer
-ID certificate and Apple notarization. For those releases, macOS displays
-“Apple could not verify MyNotes is free of malware.”
-This warning alone does not mean the DMG is corrupted, and an ad-hoc signature
-does not establish that Apple has checked the app.
+MyNotes is distributed as source code only. Public Mac and Windows installer
+releases have been withdrawn. See the [README](../README.md#development) for
+prerequisites and instructions for both operating systems.
 
-## Install a download you trust
+## Build and install on your own Mac
 
-1. Download the DMG from https://github.com/shaik-noor/myNotes/releases.
-2. Open the DMG and drag **MyNotes** into **Applications**.
-3. Open **MyNotes from Applications**, then click **Done** on the verification alert.
-4. If you trust the download, open **System Settings → Privacy & Security**.
-   Scroll to the blocked-app message and click **Open Anyway**.
-5. Authenticate if requested and confirm **Open**. macOS saves the exception for
-   that app. An updated download may require approval again.
-
-Apple describes this per-app exception here:
-https://support.apple.com/102445
-
-Do not disable Gatekeeper globally. If macOS reports detected malware, or the
-download is from an unexpected source, do not approve it using these steps.
-
-## Check download integrity
-
-Download `SHA256SUMS.txt` beside the installer and run this in the download folder:
+Install Git, Node.js 22 or later, Rust stable, and Xcode Command Line Tools:
 
 ```sh
-shasum -a 256 -c SHA256SUMS.txt --ignore-missing
-hdiutil verify MyNotes_1.2.3_aarch64.dmg
+xcode-select --install
+git clone https://github.com/shaik-noor/myNotes.git
+cd myNotes
+npm ci
+npm ci --prefix worker
+npm run tauri:build -- --bundles app
 ```
 
-A matching checksum and a successful DMG verification confirm download integrity.
-They do not establish Apple notarization or guarantee the absence of malware.
+Copy `src-tauri/target.noindex/release/bundle/macos/MyNotes.app` into Applications,
+then open that copy. The build has been verified on Apple Silicon.
+
+`npm run bundle:dmg` builds a disk image under
+`src-tauri/target.noindex/release/bundle/dmg/`. It does not replace a disk image
+already mounted from Downloads. `npm run release:mac` produces a verified local
+testing package. Neither command signs the app with an Apple Developer ID by default.
+
+## Why old downloads were blocked
+
+The former Mac downloads were ad-hoc signed, without Apple Developer ID signing
+or Apple notarization. A downloaded app can therefore trigger the Apple
+verification warning with Done and Move to Bin. Building and installing locally
+is distinct from sharing that build as a trusted download for other people.
+
+A checksum verifies download integrity; it does not replace notarization.
+Apple's explanation: https://support.apple.com/102445
 
 ## For maintainers: notarized releases
 
@@ -56,15 +56,14 @@ Run `npm run release:mac`. The local release command overrides the development
 signing identity, lets Tauri sign and notarize the app, then verifies the signature,
 hardened runtime, stapled ticket, Gatekeeper acceptance, and DMG integrity.
 Missing credentials or failed checks stop the command before release staging.
-Without membership, use the default `ad-hoc` mode and disclose manual approval.
+The default `ad-hoc` mode is for local testing only. Public installers are not currently offered.
 
-## Local release process
+## Local testing packages
 
 Builds and tests run on the maintainer's MacBook. GitHub Actions build workflows
-are removed. `npm run release:mac` stages the macOS installer, guide, checksums,
-and release description in `out/releases/v<version>/`. Upload those verified
-files through GitHub Releases. Windows installers require a separate Windows
-build machine; they are not produced by this macOS release command.
+are removed. `npm run release:mac` stages a local test package and checksums in
+`out/releases/v<version>/`; it does not publish anything. Public releases remain
+withdrawn unless a future distribution decision changes that policy.
 
 Build output is stored in `src-tauri/target.noindex` to keep generated app bundles
 out of Spotlight results. The installed app belongs in `/Applications/MyNotes.app`.

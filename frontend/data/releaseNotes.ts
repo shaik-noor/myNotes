@@ -16,14 +16,14 @@ export const RELEASE_HISTORY: ReleaseItem[] = [
   {
     version: '1.2.3',
     date: 'October 2026',
-    title: 'macOS Installation & Release Verification',
+    title: 'Build From Source',
     highlights: [
       {
         category: 'fixes',
-        badge: 'Installation',
-        title: 'Clear macOS Approval Instructions',
+        badge: 'Distribution',
+        title: 'Build Locally on Mac or Windows',
         description:
-          'macOS downloads are ad-hoc signed and require Open Anyway in Privacy & Security. The installation guide explains the Apple verification warning and how to check download integrity.'
+          'MyNotes is distributed as source code. Public Mac and Windows installers have been withdrawn; use the website or README instructions to build the app on your own computer.'
       },
       {
         category: 'fixes',

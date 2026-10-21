@@ -15,17 +15,15 @@ if (!['ad-hoc', 'notarized'].includes(mode)) throw new Error('Unknown macOS sign
 
 console.log(`# MyNotes ${tag}\n`)
 if (mode === 'ad-hoc') {
-  console.log(`**macOS: ad-hoc signed, not notarized by Apple.** macOS will display an Apple verification warning. This release does not remove that warning.\n
-1. Open the DMG and drag MyNotes into Applications.
-2. Open MyNotes from Applications once, then dismiss the verification alert with Done.
-3. If you trust this download, go to System Settings → Privacy & Security → Open Anyway, and confirm Open.
+  console.log(`**Local macOS testing package: ad-hoc signed, not notarized by Apple.**
 
-Use this per-app approval only for a download you trust. Do not disable Gatekeeper globally.
-See the attached MACOS_INSTALL.md for details and Apple's instructions.\n`)
+MyNotes is distributed as source code only. Public macOS and Windows installer releases have been withdrawn. Build locally on the computer where you plan to use it; this package is not a public installer.
+
+Sharing an ad-hoc build does not make it trusted by macOS. See MACOS_INSTALL.md for local build instructions.\n`)
 } else {
   console.log('**macOS: Developer ID signed and notarized.** The local release process verified the app signature, stapled notarization ticket, Gatekeeper assessment, and DMG integrity.\n')
 }
-console.log(`Built and tested locally on the maintainer's MacBook. This release contains a macOS Apple Silicon (M-series) DMG. Windows installers require a separate Windows build machine.\n
+console.log(`Built and tested locally on the maintainer's MacBook. This local test package contains a macOS Apple Silicon (M-series) DMG and is not published automatically.\n
 SHA256SUMS.txt contains checksums for the installers and installation guide. Verify a Mac download with:
 
 \`\`\`sh
@@ -34,4 +32,4 @@ shasum -a 256 -c SHA256SUMS.txt --ignore-missing
 
 Checksums detect incomplete or altered downloads; they do not replace Apple notarization.
 
-Release history: https://github.com/shaik-noor/myNotes/blob/${tag}/RELEASE_NOTES.md`)
+Changelog: https://github.com/shaik-noor/myNotes/blob/main/RELEASE_NOTES.md`)

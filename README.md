@@ -2,6 +2,16 @@
 
 A desktop app for notes and documents, built with Tauri, Rust, React, TypeScript, and SQLite. Notes are stored on the device. Optional Google Drive sync uses the app’s private Drive folder.
 
+## Source-only distribution
+
+MyNotes is shared as source code. Prebuilt macOS and Windows releases have been
+withdrawn; build the app locally on the computer where you plan to use it.
+Historical version tags and the changelog remain available. The source version is v1.2.3.
+
+The Mac app is not signed with an Apple Developer ID or notarized by Apple.
+Downloaded copies can therefore be blocked by macOS. A local build does not
+make a shared DMG trusted on someone else's computer.
+
 ## Features
 
 - Nested pages and notebooks, breadcrumbs, drag-and-drop ordering, and batch actions.
@@ -22,15 +32,42 @@ AI writing and direct OneNote binary import are not supported. Export OneNote pa
 
 ## Development
 
-Install Node.js, Rust, and the platform requirements for Tauri. Then run:
+Install Git, Node.js 22 or later, Rust stable, and the
+[Tauri platform prerequisites](https://v2.tauri.app/start/prerequisites/).
+On macOS, install Xcode Command Line Tools. On Windows, install Visual Studio
+C++ Build Tools with the Desktop development with C++ workload, Microsoft Edge
+WebView2, and Rust's MSVC toolchain. Then run:
 
 ```sh
+git clone https://github.com/shaik-noor/myNotes.git
+cd myNotes
 npm ci
 npm ci --prefix worker
 npm run dev
 ```
 
 `npm run dev:frontend` starts the frontend alone. Native storage, file dialogs, and Google sign-in require the desktop app; the browser alone cannot provide those features.
+
+To build a local macOS app for your own machine:
+
+```sh
+npm run tauri:build -- --bundles app
+```
+
+Copy `src-tauri/target.noindex/release/bundle/macos/MyNotes.app` into Applications
+and open that copy. This builds the app locally rather than installing a downloaded
+DMG. `npm run bundle:dmg` creates a disk image in the project build folder; it
+does not replace an installer already mounted from Downloads.
+
+To build a local Windows app on a Windows PC:
+
+```sh
+npm run tauri:build -- --no-bundle
+```
+
+Open `src-tauri/target.noindex/release/mynotes.exe`. The build uses the host
+machine's architecture. Windows binaries must be built on Windows; the MacBook
+build command does not produce a Windows application.
 
 See [the interface design notes](DESIGN_NOTES.md) for the responsive layout and a development-only sample preview.
 
@@ -49,11 +86,10 @@ Build the desktop application with:
 npm run tauri:build
 ```
 
-The default macOS build is ad-hoc signed and is not notarized by Apple. Downloaded
-copies require per-app approval in System Settings → Privacy & Security → Open
-Anyway after copying MyNotes into Applications and attempting to open it once.
-See [macOS installation and release signing](docs/MACOS_INSTALL.md) for download
-verification, installation steps, and notarized release setup.
+The default macOS build is ad-hoc signed for local use and is not notarized by Apple.
+It is not intended to be shared as a public download. See
+[macOS build and signing details](docs/MACOS_INSTALL.md) for local installation
+and possible future notarized distribution.
 
 Build and test a release locally on an Apple Silicon MacBook:
 
@@ -61,11 +97,10 @@ Build and test a release locally on an Apple Silicon MacBook:
 npm run release:mac
 ```
 
-This runs validation and native tests, builds and verifies the DMG, and stages the
-installer, installation guide, release description, and SHA-256 checksums under
-`out/releases/v<version>/`. Upload the DMG, guide, and checksums to GitHub Releases
-and use `RELEASE_BODY.md` as the description. GitHub Actions builds are disabled.
-Windows installers need a separate Windows build machine.
+This runs validation and native tests, builds and verifies a local test DMG, and
+stages the package, installation guide, description, and checksums under
+`out/releases/v<version>/`. These are local testing artifacts, not public downloads.
+GitHub Actions builds are disabled. See [macOS build and signing details](docs/MACOS_INSTALL.md).
 
 Cargo output goes to `src-tauri/target.noindex` so Spotlight does not list the
 development app bundle alongside the installed app in Applications.

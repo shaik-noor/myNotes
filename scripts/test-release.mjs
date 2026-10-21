@@ -23,12 +23,12 @@ function fixture(run) {
   try { run(dir, invoke) } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 
-test('unnotarized release discloses warning and approval instructions', () => {
+test('local test package discloses notarization and source-only distribution', () => {
   fixture((_dir, invoke) => {
     const result = invoke(notesScript, { RELEASE_TAG: 'v1.2.1', MACOS_SIGNING: 'ad-hoc' })
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /not notarized by Apple/)
-    assert.match(result.stdout, /Open Anyway/)
+    assert.match(result.stdout, /source code only/)
     assert.doesNotMatch(result.stdout, /Gatekeeper assessment.*verified/)
   })
 })

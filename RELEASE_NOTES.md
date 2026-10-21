@@ -1,5 +1,10 @@
 # Release Notes: MyNotes v1.2.3
 
+**Distribution update — October 22, 2026:** MyNotes is now source-only. Public
+macOS and Windows installer releases have been withdrawn. Build locally using
+the [README instructions](README.md#development). Git tags and the changelog
+below are retained as historical records; old download filenames are historical.
+
 **Release Date:** October 22, 2026
 
 - Verified the published v1.2.0 DMG: its disk-image checksum and ad-hoc app signature are valid. The Apple warning is caused by missing Developer ID signing and notarization.

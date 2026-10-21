@@ -53,4 +53,4 @@ const sums = [dmg, 'MACOS_INSTALL.md'].map(name => {
 }).join('')
 writeFileSync(resolve(output, 'SHA256SUMS.txt'), sums)
 console.log(`Verified local release ready in ${output}`)
-console.log('Upload the DMG, MACOS_INSTALL.md and SHA256SUMS.txt to GitHub Releases.')
+console.log('Local testing package only. MyNotes is distributed as source code; this command does not publish a release.')
