@@ -10,9 +10,51 @@ export interface ReleaseItem {
   }[]
 }
 
-export const APP_VERSION = '1.0.3'
+export const APP_VERSION = '1.1.0'
 
 export const RELEASE_HISTORY: ReleaseItem[] = [
+  {
+    version: '1.1.0',
+    date: 'October 2026',
+    title: 'Interface Redesign & Stability Update',
+    highlights: [
+      {
+        category: 'ui',
+        badge: 'Redesign',
+        title: 'Page-First Library & Slide-Over Panels',
+        description:
+          'A cleaner, focused library puts your notes first. Drawers for Quick Notes, Templates, Outline, and unified Settings slide out smoothly from screen edges with full keyboard and responsive support.'
+      },
+      {
+        category: 'performance',
+        badge: 'Fast Launch',
+        title: '66% Smaller Initial Bundle & Workspace Skeleton',
+        description:
+          'Lazy-loaded editor modules drop initial entry bundle from ~1.8MB to ~600KB, paired with instant workspace skeleton loading.'
+      },
+      {
+        category: 'fixes',
+        badge: 'Data Integrity',
+        title: 'Atomic Database Transactions & Rollback Protection',
+        description:
+          'Single-transaction atomic execution for backups, restores, and Drive merges. If an attachment or note fails, all changes roll back safely to prevent partial data corruption.'
+      },
+      {
+        category: 'features',
+        badge: 'Editor',
+        title: 'Inline Code Tools & Markdown Table Boundaries',
+        description:
+          'In-block code language picker with one-click copy, persistent inline find-and-replace with match counts, and Markdown serialization fixes for tables and lists.'
+      },
+      {
+        category: 'ui',
+        badge: 'macOS Native',
+        title: 'Frameless macOS Window & Theme Refinements',
+        description:
+          'Transparent titlebar with native traffic light positioning, seamless background styling, 5 high-contrast accent palettes, and respect for system reduced motion.'
+      }
+    ]
+  },
   {
     version: '1.0.3',
     date: 'October 2026',

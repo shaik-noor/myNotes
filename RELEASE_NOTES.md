@@ -1,3 +1,30 @@
+# Release Notes: myNotes v1.1.0
+
+**Release Date:** October 21, 2026
+**Downloads:** `myNotes_1.1.0_aarch64.dmg` (macOS Apple Silicon), `myNotes_1.1.0_x64-setup.exe`, `myNotes_1.1.0_x64_en-US.msi` (Windows x64)
+
+## 🎨 Interface Redesign & UX
+- **Page-First Library:** Streamlined library layout focusing on your notes, recent edits, search, and list/grid views.
+- **Slide-Over Drawers:** Quick Notes, starter Templates, Document Outline, and Settings now slide out smoothly without crowding the editor canvas.
+- **Unified Settings:** Consolidated appearance, sync, backups, keyboard shortcuts, and release notes into one accessible panel.
+- **macOS Native Styling:** Transparent native titlebar with positioned traffic light controls, seamless background styling, and clean window dragging.
+- **Accessibility & Themes:** 5 high-contrast accent palettes (Ocean Blue, Warm Amber, Deep Violet, Emerald Forest, Soft Rose), font customization (Inter, Merriweather, JetBrains Mono), and reduced motion support.
+
+## ⚡ Performance & Editor
+- **66% Smaller Entry Bundle:** Editor modules and preview components are lazy-loaded on demand, slashing initial bundle size from ~1.8 MB to ~600 KB.
+- **Workspace Skeleton:** Immediate skeleton placeholder for seamless page loading without layout shifts.
+- **In-Block Code Tools:** Code blocks now feature an inline language picker and one-click copy button.
+- **Find & Replace:** Inline find and replace bar with live match counts and literal string replacement.
+- **Markdown Table Integrity:** Fixed serialization bug where tables adjacent to lists would merge into invalid formatting.
+
+## 🛡️ Stability, Security & Data Integrity
+- **Atomic Transactions:** Restore, reparenting, and cloud merge operations execute within single SQLite transactions with atomic rollback on failure.
+- **Attachment Isolation:** Attachments are stored in isolated per-ID directories to prevent filename collisions and path traversal attacks.
+- **Safe Error Propagation:** Database read errors and file operations fail loudly and cleanly rather than silently corrupting library state.
+- **Bounded Ingestion:** Added bounded file size checks (25 MB) before reading file contents into memory.
+
+---
+
 # Release Notes: myNotes v1.0.3
 
 **Release Date:** October 19, 2026

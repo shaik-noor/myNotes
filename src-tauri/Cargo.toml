@@ -1,6 +1,6 @@
 [package]
 name = "mynotes"
-version = "1.0.3"
+version = "1.1.0"
 description = "myNotes - Personal Knowledge & Document Workspace"
 authors = ["Shaik"]
 edition = "2021"
@@ -31,3 +31,7 @@ chrono = { version = "0.4", features = ["serde"] }
 urlencoding = "2.1"
 hex = "0.4"
 url = "2.5"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSWindow", "NSColor"] }
