@@ -34,6 +34,10 @@ jobs:
           node-version: 22
           cache: 'npm'
 
+      - name: Select Xcode (macOS)
+        if: runner.os == 'macOS'
+        run: sudo xcode-select -switch /Applications/Xcode.app
+
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
