@@ -1,16 +1,16 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use base64::engine::general_purpose::STANDARD as BASE64;
-use base64::Engine;
 use crate::db::Database;
 use crate::types::{NoteAttachment, NoteAttachmentKind, NoteAttachmentRow};
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
+use std::fs;
+use std::path::{Component, Path, PathBuf};
 
 const MAX_ATTACHMENT_BYTES: usize = 25 * 1024 * 1024;
 
 const TEXT_EXTS: &[&str] = &[
-    "txt", "md", "markdown", "json", "yaml", "yml", "xml", "html", "htm", "css",
-    "js", "jsx", "ts", "tsx", "py", "java", "c", "cpp", "h", "cs", "go", "rs",
-    "rb", "php", "sh", "bash", "sql", "ini", "conf", "toml", "log", "csv",
+    "txt", "md", "markdown", "json", "yaml", "yml", "xml", "html", "htm", "css", "js", "jsx", "ts",
+    "tsx", "py", "java", "c", "cpp", "h", "cs", "go", "rs", "rb", "php", "sh", "bash", "sql",
+    "ini", "conf", "toml", "log", "csv",
 ];
 
 const IMAGE_EXTS: &[&str] = &[
@@ -47,8 +47,17 @@ pub fn guess_mime(ext: &str) -> &'static str {
     }
 }
 
-pub fn staging_dir(data_dir: &Path, note_id: &str) -> PathBuf {
-    data_dir.join("note-attachments").join(note_id)
+fn safe_component(value: &str) -> Result<&str, String> {
+    let mut components = Path::new(value).components();
+    if value.is_empty()
+        || value.contains(['/', '\\'])
+        || value.chars().any(char::is_control)
+        || !matches!(components.next(), Some(Component::Normal(_)))
+        || components.next().is_some()
+    {
+        return Err("Invalid attachment path".to_string());
+    }
+    Ok(value)
 }
 
 pub fn sanitize_name(name: &str) -> String {
@@ -56,10 +65,11 @@ pub fn sanitize_name(name: &str) -> String {
         .chars()
         .map(|c| match c {
             '/' | '\\' | '?' | '%' | '*' | ':' | '|' | '"' | '<' | '>' => '_',
+            c if c.is_control() => '_',
             _ => c,
         })
         .collect();
-    let trimmed = cleaned.trim();
+    let trimmed = cleaned.trim().trim_matches('.');
     if trimmed.is_empty() {
         "attachment".to_string()
     } else {
@@ -67,15 +77,29 @@ pub fn sanitize_name(name: &str) -> String {
     }
 }
 
+fn attachment_path(
+    data_dir: &Path,
+    note_id: &str,
+    id: &str,
+    name: &str,
+) -> Result<PathBuf, String> {
+    Ok(data_dir
+        .join("note-attachments")
+        .join(safe_component(note_id)?)
+        .join(safe_component(id)?)
+        .join(sanitize_name(name)))
+}
+
 pub fn ensure_disk_mirror(
     data_dir: &Path,
     note_id: &str,
+    id: &str,
     name: &str,
     bytes: &[u8],
 ) -> Result<PathBuf, String> {
-    let dir = staging_dir(data_dir, note_id);
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let target = dir.join(name);
+    let target = attachment_path(data_dir, note_id, id, name)?;
+    fs::create_dir_all(target.parent().ok_or("Invalid attachment path")?)
+        .map_err(|e| e.to_string())?;
     fs::write(&target, bytes).map_err(|e| e.to_string())?;
     Ok(target)
 }
@@ -84,21 +108,15 @@ pub fn materialize_row(data_dir: &Path, row: &NoteAttachmentRow) -> Option<PathB
     let note_id = row.note_id.as_deref()?;
     let name = row.name.as_deref()?;
     let data = row.data.as_deref()?;
-
-    let dir = staging_dir(data_dir, note_id);
-    let target = dir.join(name);
-    if target.exists() {
-        return Some(target);
+    if data.len() > MAX_ATTACHMENT_BYTES.div_ceil(3) * 4 {
+        return None;
     }
-
-    if fs::create_dir_all(&dir).is_ok() {
-        if let Ok(bytes) = BASE64.decode(data) {
-            if fs::write(&target, bytes).is_ok() {
-                return Some(target);
-            }
-        }
+    let bytes = BASE64.decode(data).ok()?;
+    if bytes.len() > MAX_ATTACHMENT_BYTES {
+        return None;
     }
-    None
+    // Rebuild from the database so restoring a backup cannot reuse stale cached bytes.
+    ensure_disk_mirror(data_dir, note_id, &row.id, name, &bytes).ok()
 }
 
 pub fn stage_from_paths(
@@ -157,7 +175,7 @@ pub fn stage_from_paths(
                 path: None,
                 preview_data_url: None,
                 error: Some(format!(
-                    "File exceeds 25 MB cap ({:.1} MB)",
+                    "File exceeds 25 MB limit ({:.1} MB)",
                     (size as f64) / (1024.0 * 1024.0)
                 )),
                 created_at: None,
@@ -186,7 +204,7 @@ pub fn stage_from_paths(
         };
 
         let id = format!("{:016x}", rand::random::<u64>());
-        let staged_path = match ensure_disk_mirror(data_dir, note_id, &name, &bytes) {
+        let staged_path = match ensure_disk_mirror(data_dir, note_id, &id, &name, &bytes) {
             Ok(target) => target.to_string_lossy().to_string(),
             Err(e) => {
                 results.push(NoteAttachment {
@@ -294,7 +312,7 @@ pub fn stage_from_bytes(
             path: None,
             preview_data_url: None,
             error: Some(format!(
-                "Attachment exceeds 25 MB cap ({:.1} MB)",
+                "Attachment exceeds 25 MB limit ({:.1} MB)",
                 (bytes.len() as f64) / (1024.0 * 1024.0)
             )),
             created_at: None,
@@ -302,7 +320,7 @@ pub fn stage_from_bytes(
     }
 
     let id = format!("{:016x}", rand::random::<u64>());
-    let staged_path = match ensure_disk_mirror(data_dir, note_id, &safe_name, &bytes) {
+    let staged_path = match ensure_disk_mirror(data_dir, note_id, &id, &safe_name, &bytes) {
         Ok(p) => p.to_string_lossy().to_string(),
         Err(e) => {
             return NoteAttachment {
@@ -377,15 +395,17 @@ pub fn stage_from_bytes(
     }
 }
 
-pub fn list_attachments(data_dir: &Path, db: &Database, note_id: &str) -> Vec<NoteAttachment> {
-    let rows = db.list_note_attachments(note_id).unwrap_or_default();
+pub fn list_attachments(db: &Database, note_id: &str) -> Result<Vec<NoteAttachment>, String> {
+    let rows = db.list_note_attachments(note_id)?;
     let mut items = Vec::new();
 
     for r in rows {
         let ext = r.ext.clone().unwrap_or_default();
         let kind = classify_kind(&ext);
-        let mime = r.mime.clone().unwrap_or_else(|| guess_mime(&ext).to_string());
-        let disk_path = materialize_row(data_dir, &r).map(|p| p.to_string_lossy().to_string());
+        let mime = r
+            .mime
+            .clone()
+            .unwrap_or_else(|| guess_mime(&ext).to_string());
 
         items.push(NoteAttachment {
             id: Some(r.id),
@@ -395,25 +415,75 @@ pub fn list_attachments(data_dir: &Path, db: &Database, note_id: &str) -> Vec<No
             kind: Some(kind),
             ext: Some(ext),
             mime: Some(mime),
-            path: disk_path,
+            path: None,
             preview_data_url: None,
             error: None,
             created_at: r.created_at,
         });
     }
 
-    items
+    Ok(items)
 }
 
 pub fn remove_attachment(data_dir: &Path, db: &Database, id: &str) -> Result<(), String> {
-    if let Ok(Some(row)) = db.get_note_attachment(id) {
+    if let Some(row) = db.get_note_attachment(id)? {
         db.delete_note_attachment(id)?;
         if let (Some(note_id), Some(name)) = (row.note_id, row.name) {
-            let disk_path = staging_dir(data_dir, &note_id).join(name);
+            let disk_path = attachment_path(data_dir, &note_id, &row.id, &name)?;
             if disk_path.exists() {
-                let _ = fs::remove_file(disk_path);
+                fs::remove_file(disk_path).map_err(|e| e.to_string())?;
             }
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_paths_from_untrusted_note_and_attachment_ids() {
+        for value in [
+            "",
+            ".",
+            "..",
+            "../escape",
+            "/tmp/escape",
+            "a/b",
+            "a\\b",
+            "bad\0id",
+        ] {
+            assert!(attachment_path(Path::new("/tmp/vault"), value, "id", "file.txt").is_err());
+            assert!(attachment_path(Path::new("/tmp/vault"), "note", value, "file.txt").is_err());
+        }
+    }
+
+    #[test]
+    fn same_name_attachments_have_separate_paths() {
+        let first = attachment_path(Path::new("/tmp/vault"), "note", "first", "file.txt").unwrap();
+        let second =
+            attachment_path(Path::new("/tmp/vault"), "note", "second", "file.txt").unwrap();
+        assert_ne!(first, second);
+        assert_eq!(sanitize_name(".."), "attachment");
+        assert_eq!(sanitize_name("bad\0name.txt"), "bad_name.txt");
+    }
+
+    #[test]
+    fn materialization_uses_database_bytes_instead_of_stale_cache() {
+        let dir = std::env::temp_dir().join(format!(
+            "mynotes-attachment-test-{:x}",
+            rand::random::<u64>()
+        ));
+        let mut row: NoteAttachmentRow = serde_json::from_value(serde_json::json!({
+            "id": "id", "noteId": "note", "name": "file.txt", "data": BASE64.encode(b"old")
+        }))
+        .unwrap();
+        let first = materialize_row(&dir, &row).unwrap();
+        row.data = Some(BASE64.encode(b"restored"));
+        let second = materialize_row(&dir, &row).unwrap();
+        assert_eq!(first, second);
+        assert_eq!(fs::read(second).unwrap(), b"restored");
+        fs::remove_dir_all(dir).unwrap();
+    }
 }

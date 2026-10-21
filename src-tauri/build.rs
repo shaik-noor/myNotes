@@ -55,7 +55,10 @@ fn main() {
     let trimmed_auth_url = auth_server_url.trim().trim_end_matches('/');
 
     if !trimmed_auth_url.is_empty() {
-        println!("cargo:rustc-env=BUILTIN_AUTH_SERVER_URL={}", trimmed_auth_url);
+        println!(
+            "cargo:rustc-env=BUILTIN_AUTH_SERVER_URL={}",
+            trimmed_auth_url
+        );
     } else if env::var("PROFILE").as_deref() == Ok("release") {
         println!("cargo:warning=AUTH_SERVER_URL is not set: Google Drive sync will be unavailable in this build");
     }

@@ -1,6 +1,7 @@
-use std::fs;
-use std::path::Path;
 use crate::types::NoteImportResult;
+use std::fs;
+use std::io::Read;
+use std::path::Path;
 
 pub fn import_file_content(path_str: &str) -> Result<NoteImportResult, String> {
     let path = Path::new(path_str);
@@ -18,19 +19,21 @@ pub fn import_file_content(path_str: &str) -> Result<NoteImportResult, String> {
         .unwrap_or("")
         .to_lowercase();
 
-    if ["one", "onex", "onepkg"].contains(&ext.as_str()) {
-        return Ok(NoteImportResult {
-            import_type: None,
-            notebook_title: None,
-            pages: None,
-            title: Some(raw_name.to_string()),
-            content: None,
-            format: None,
-            error: Some("OneNote binary format extraction requires the python extractor in resources.".to_string()),
-        });
+    if !["txt", "md", "markdown", "html", "htm"].contains(&ext.as_str()) {
+        return Err(
+            "Choose a Markdown, text, or HTML file. Export OneNote pages as HTML or text first."
+                .to_string(),
+        );
     }
-
-    let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    const MAX_IMPORT_BYTES: u64 = 25 * 1024 * 1024;
+    let file = fs::File::open(path).map_err(|e| e.to_string())?;
+    let mut content = String::new();
+    file.take(MAX_IMPORT_BYTES + 1)
+        .read_to_string(&mut content)
+        .map_err(|e| e.to_string())?;
+    if content.len() as u64 > MAX_IMPORT_BYTES {
+        return Err("File is too large. Choose a file smaller than 25 MB.".to_string());
+    }
 
     Ok(NoteImportResult {
         import_type: Some("single".to_string()),

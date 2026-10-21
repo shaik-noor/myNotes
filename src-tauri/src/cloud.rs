@@ -1,15 +1,15 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use crate::db::Database;
+use crate::types::{BackupManifest, CloudSyncConfig, CloudSyncResult};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as BASE64_URL;
 use base64::Engine;
 use rand::RngCore;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_opener::OpenerExt;
-use crate::db::Database;
-use crate::types::{BackupManifest, CloudSyncConfig, CloudSyncResult};
 
 const DRIVE_FILES_URL: &str = "https://www.googleapis.com/drive/v3/files";
 const DRIVE_UPLOAD_URL: &str = "https://www.googleapis.com/upload/drive/v3/files";
@@ -140,7 +140,35 @@ fn exchange_code_via_relay(
             name: res.name,
             picture: res.picture,
         }),
-        _ => Err(res.error.unwrap_or_else(|| "Token exchange failed on auth relay".to_string())),
+        _ => Err(res
+            .error
+            .unwrap_or_else(|| "Token exchange failed on auth relay".to_string())),
+    }
+}
+
+async fn handle_drive_response(
+    res: reqwest::Response,
+    action: &str,
+) -> Result<reqwest::Response, String> {
+    let status = res.status();
+    if status.is_success() {
+        return Ok(res);
+    }
+
+    let body = res.text().await.unwrap_or_default();
+    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&body) {
+        if let Some(msg) = val
+            .get("error")
+            .and_then(|e| e.get("message"))
+            .and_then(|m| m.as_str())
+        {
+            return Err(format!("{}: {}", action, msg));
+        }
+    }
+    if body.trim().is_empty() {
+        Err(format!("{} (HTTP {})", action, status))
+    } else {
+        Err(format!("{} (HTTP {}): {}", action, status, body))
     }
 }
 
@@ -209,7 +237,8 @@ impl CloudSyncManager {
     }
 
     pub fn set_auto_sync(&self, enabled: bool) -> Result<(), String> {
-        self.db.set_cloud_sync_value("autoSync", Some(if enabled { "1" } else { "0" }))
+        self.db
+            .set_cloud_sync_value("autoSync", Some(if enabled { "1" } else { "0" }))
     }
 
     pub async fn logout(&self) -> Result<(), String> {
@@ -229,7 +258,10 @@ impl CloudSyncManager {
         Ok(())
     }
 
-    pub async fn start_login(self: Arc<Self>, app_handle: AppHandle) -> Result<(String, String), String> {
+    pub async fn start_login(
+        self: Arc<Self>,
+        app_handle: AppHandle,
+    ) -> Result<(String, String), String> {
         let auth_server_url = self.get_auth_server_url();
         if auth_server_url.is_empty() {
             return Err("Google Drive sync isn't available in this build of myNotes.".to_string());
@@ -267,7 +299,11 @@ impl CloudSyncManager {
 
         tokio::task::spawn_blocking(move || {
             let html_header = || {
-                tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).unwrap()
+                tiny_http::Header::from_bytes(
+                    &b"Content-Type"[..],
+                    &b"text/html; charset=utf-8"[..],
+                )
+                .unwrap()
             };
 
             let report_error = |msg: &str| {
@@ -291,7 +327,9 @@ impl CloudSyncManager {
 
                 let url = request.url().to_string();
                 if !url.starts_with("/callback") {
-                    let _ = request.respond(tiny_http::Response::from_string("Not found").with_status_code(404));
+                    let _ = request.respond(
+                        tiny_http::Response::from_string("Not found").with_status_code(404),
+                    );
                     continue;
                 }
 
@@ -299,19 +337,24 @@ impl CloudSyncManager {
                 let url_obj = match url::Url::parse(&parsed_url) {
                     Ok(u) => u,
                     Err(_) => {
-                        let _ = request.respond(tiny_http::Response::from_string("Bad Request").with_status_code(400));
+                        let _ = request.respond(
+                            tiny_http::Response::from_string("Bad Request").with_status_code(400),
+                        );
                         continue;
                     }
                 };
 
-                let query_pairs: std::collections::HashMap<_, _> = url_obj.query_pairs().into_owned().collect();
+                let query_pairs: std::collections::HashMap<_, _> =
+                    url_obj.query_pairs().into_owned().collect();
                 let ret_state = query_pairs.get("state");
                 let error_param = query_pairs.get("error");
                 let code = query_pairs.get("code");
 
                 // Ignore anything that doesn't carry our CSRF state so stray requests can't cancel or hijack the login
                 if ret_state != Some(&state) {
-                    let _ = request.respond(tiny_http::Response::from_string("Invalid state").with_status_code(400));
+                    let _ = request.respond(
+                        tiny_http::Response::from_string("Invalid state").with_status_code(400),
+                    );
                     continue;
                 }
 
@@ -321,34 +364,51 @@ impl CloudSyncManager {
                         <h2>Authentication Cancelled</h2><p>{}</p></body></html>"#,
                         escape_html(err)
                     );
-                    let _ = request.respond(tiny_http::Response::from_string(html).with_header(html_header()));
+                    let _ = request
+                        .respond(tiny_http::Response::from_string(html).with_header(html_header()));
                     report_error(&format!("Google sign-in failed: {}", err));
                     break;
                 }
 
                 let Some(code_val) = code else {
-                    let _ = request.respond(tiny_http::Response::from_string("Invalid request").with_status_code(400));
+                    let _ = request.respond(
+                        tiny_http::Response::from_string("Invalid request").with_status_code(400),
+                    );
                     break;
                 };
 
                 let client = reqwest::blocking::Client::new();
                 // Redeem the PKCE-bound code at the relay, which holds the client secret
-                let login_result = exchange_code_via_relay(&client, &auth_server_url, code_val, &code_verifier);
+                let login_result =
+                    exchange_code_via_relay(&client, &auth_server_url, code_val, &code_verifier);
 
                 match login_result {
                     Ok(login) => {
-                        let _ = manager.db.set_cloud_sync_value("accessToken", Some(&login.access_token));
+                        let _ = manager
+                            .db
+                            .set_cloud_sync_value("accessToken", Some(&login.access_token));
                         if let Some(ref rt) = login.refresh_token {
                             if !rt.is_empty() {
                                 let _ = manager.db.set_cloud_sync_value("refreshToken", Some(rt));
                             }
                         }
-                        let expiry = chrono::Utc::now().timestamp() + (login.expires_in.unwrap_or(3600) as i64);
-                        let _ = manager.db.set_cloud_sync_value("tokenExpiry", Some(&expiry.to_string()));
-                        let _ = manager.db.set_cloud_sync_value("tokenIssuer", Some(&issuer));
-                        let _ = manager.db.set_cloud_sync_value("userEmail", login.email.as_deref());
-                        let _ = manager.db.set_cloud_sync_value("userName", login.name.as_deref());
-                        let _ = manager.db.set_cloud_sync_value("userPicture", login.picture.as_deref());
+                        let expiry = chrono::Utc::now().timestamp()
+                            + (login.expires_in.unwrap_or(3600) as i64);
+                        let _ = manager
+                            .db
+                            .set_cloud_sync_value("tokenExpiry", Some(&expiry.to_string()));
+                        let _ = manager
+                            .db
+                            .set_cloud_sync_value("tokenIssuer", Some(&issuer));
+                        let _ = manager
+                            .db
+                            .set_cloud_sync_value("userEmail", login.email.as_deref());
+                        let _ = manager
+                            .db
+                            .set_cloud_sync_value("userName", login.name.as_deref());
+                        let _ = manager
+                            .db
+                            .set_cloud_sync_value("userPicture", login.picture.as_deref());
 
                         let html = r#"
                         <html>
@@ -361,7 +421,9 @@ impl CloudSyncManager {
                           </body>
                         </html>"#;
 
-                        let _ = request.respond(tiny_http::Response::from_string(html).with_header(html_header()));
+                        let _ = request.respond(
+                            tiny_http::Response::from_string(html).with_header(html_header()),
+                        );
 
                         let _ = app_handle.emit("cloud:sync-completed", ());
                         let manager_sync = manager.clone();
@@ -371,7 +433,13 @@ impl CloudSyncManager {
                         });
                     }
                     Err(e) => {
-                        let _ = request.respond(tiny_http::Response::from_string(format!("Token exchange failed: {}", e)).with_status_code(400));
+                        let _ = request.respond(
+                            tiny_http::Response::from_string(format!(
+                                "Token exchange failed: {}",
+                                e
+                            ))
+                            .with_status_code(400),
+                        );
                         report_error(&format!("Google sign-in failed: {}", e));
                     }
                 }
@@ -380,8 +448,16 @@ impl CloudSyncManager {
         });
 
         Ok((
-            self.db.get_cloud_sync_value("userEmail").ok().flatten().unwrap_or_default(),
-            self.db.get_cloud_sync_value("userName").ok().flatten().unwrap_or_default(),
+            self.db
+                .get_cloud_sync_value("userEmail")
+                .ok()
+                .flatten()
+                .unwrap_or_default(),
+            self.db
+                .get_cloud_sync_value("userName")
+                .ok()
+                .flatten()
+                .unwrap_or_default(),
         ))
     }
 
@@ -444,15 +520,23 @@ impl CloudSyncManager {
                 // Google revoked the grant (user removed access, or the refresh token expired)
                 if refresh_res.error.as_deref() == Some("invalid_grant") {
                     self.clear_tokens()?;
-                    return Err("Google Drive access expired or was revoked. Please sign in again.".to_string());
+                    return Err(
+                        "Google Drive access expired or was revoked. Please sign in again."
+                            .to_string(),
+                    );
                 }
-                return Err(refresh_res.error.unwrap_or_else(|| "Token refresh failed on auth relay".to_string()));
+                return Err(refresh_res
+                    .error
+                    .unwrap_or_else(|| "Token refresh failed on auth relay".to_string()));
             }
         };
 
-        self.db.set_cloud_sync_value("accessToken", Some(&new_tok))?;
-        let new_expiry = chrono::Utc::now().timestamp() + (refresh_res.expires_in.unwrap_or(3600) as i64);
-        self.db.set_cloud_sync_value("tokenExpiry", Some(&new_expiry.to_string()))?;
+        self.db
+            .set_cloud_sync_value("accessToken", Some(&new_tok))?;
+        let new_expiry =
+            chrono::Utc::now().timestamp() + (refresh_res.expires_in.unwrap_or(3600) as i64);
+        self.db
+            .set_cloud_sync_value("tokenExpiry", Some(&new_expiry.to_string()))?;
 
         Ok(new_tok)
     }
@@ -499,8 +583,8 @@ impl CloudSyncManager {
             .header(AUTHORIZATION, format!("Bearer {}", access_token))
             .send()
             .await
-            .and_then(|r| r.error_for_status())
-            .map_err(|e| format!("Drive search failed: {}", e))?;
+            .map_err(|e| format!("Drive search network error: {}", e))?;
+        let search_res = handle_drive_response(search_res, "Drive search failed").await?;
 
         let file_list: DriveFileList = search_res.json().await.map_err(|e| e.to_string())?;
         let existing_file_id = file_list
@@ -518,8 +602,8 @@ impl CloudSyncManager {
                 .header(AUTHORIZATION, format!("Bearer {}", access_token))
                 .send()
                 .await
-                .and_then(|r| r.error_for_status())
-                .map_err(|e| format!("Drive download failed: {}", e))?;
+                .map_err(|e| format!("Drive download network error: {}", e))?;
+            let down_res = handle_drive_response(down_res, "Drive download failed").await?;
 
             // Abort rather than upload over a remote vault we couldn't read: that would drop other devices' edits
             let remote_manifest = down_res
@@ -541,15 +625,15 @@ impl CloudSyncManager {
         let uploaded_file_id = if let Some(ref fid) = existing_file_id {
             // Update existing file
             let upload_url = format!("{}/{}?uploadType=media", DRIVE_UPLOAD_URL, fid);
-            client
+            let res = client
                 .patch(&upload_url)
                 .header(AUTHORIZATION, format!("Bearer {}", access_token))
                 .header(CONTENT_TYPE, "application/json")
                 .body(manifest_bytes)
                 .send()
                 .await
-                .and_then(|r| r.error_for_status())
-                .map_err(|e| format!("Drive upload failed: {}", e))?;
+                .map_err(|e| format!("Drive upload network error: {}", e))?;
+            let _ = handle_drive_response(res, "Drive upload failed").await?;
             fid.clone()
         } else {
             // Create new file via multipart upload
@@ -576,14 +660,16 @@ impl CloudSyncManager {
                 .multipart(form)
                 .send()
                 .await
-                .and_then(|r| r.error_for_status())
-                .map_err(|e| format!("Drive upload failed: {}", e))?;
+                .map_err(|e| format!("Drive upload network error: {}", e))?;
+            let res = handle_drive_response(res, "Drive upload failed").await?;
 
             let new_file: DriveFileItem = res.json().await.map_err(|e| e.to_string())?;
             new_file.id
         };
 
-        let _ = self.db.set_cloud_sync_value("fileId", Some(&uploaded_file_id));
+        let _ = self
+            .db
+            .set_cloud_sync_value("fileId", Some(&uploaded_file_id));
 
         Ok(CloudSyncResult {
             notes_count,

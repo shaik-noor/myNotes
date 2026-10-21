@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use tauri::Manager;
 
-pub mod ai;
 pub mod attachments;
 pub mod cloud;
 pub mod commands;
@@ -10,7 +9,52 @@ pub mod fractional_index;
 pub mod importer;
 pub mod types;
 
-use ai::AiStreamManager;
+pub(crate) fn apply_native_theme(app: &tauri::AppHandle, theme: &str) {
+    app.set_theme(match theme {
+        "dark" => Some(tauri::Theme::Dark),
+        "light" => Some(tauri::Theme::Light),
+        _ => None,
+    });
+}
+
+#[cfg(target_os = "macos")]
+fn configure_native_chrome(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(error) = window.with_webview(|webview| {
+            // Tauri runs this closure on the main thread and owns the live NSWindow.
+            let window: &objc2_app_kit::NSWindow = unsafe { &*webview.ns_window().cast() };
+            // A clear backing exposes black during native fullscreen transitions
+            // and when AppKit reveals its title bar. Use a dynamic system color
+            // so the backing follows the window's light/dark appearance.
+            window.setOpaque(true);
+            window.setBackgroundColor(Some(&objc2_app_kit::NSColor::windowBackgroundColor()));
+            let style = window.styleMask();
+            if !style.contains(objc2_app_kit::NSWindowStyleMask::FullSizeContentView) {
+                window.setStyleMask(style | objc2_app_kit::NSWindowStyleMask::FullSizeContentView);
+            }
+            window.setTitlebarAppearsTransparent(true);
+            // In fullscreen AppKit reveals a native title strip over our HTML
+            // header. Give that strip a title too; keep the windowed overlay
+            // title hidden so it doesn't duplicate the app header.
+            window.setTitleVisibility(
+                if window
+                    .styleMask()
+                    .contains(objc2_app_kit::NSWindowStyleMask::FullScreen)
+                {
+                    objc2_app_kit::NSWindowTitleVisibility::Visible
+                } else {
+                    objc2_app_kit::NSWindowTitleVisibility::Hidden
+                },
+            );
+            if objc2::available!(macos = 11.0) {
+                window.setTitlebarSeparatorStyle(objc2_app_kit::NSTitlebarSeparatorStyle::None);
+            }
+        }) {
+            log::warn!("Could not configure the native title bar: {error}");
+        }
+    }
+}
+
 use cloud::CloudSyncManager;
 use commands::AppState;
 use db::Database;
@@ -20,28 +64,40 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .on_window_event(|window, event| {
+            #[cfg(target_os = "macos")]
+            if matches!(event, tauri::WindowEvent::Resized(_)) {
+                configure_native_chrome(window.app_handle());
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (window, event);
+        })
         .plugin(
             tauri_plugin_log::Builder::default()
                 .level(log::LevelFilter::Info)
                 .build(),
         )
         .setup(|app| {
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default().join(".mynotes_data"));
+            let app_data_dir = app.path().app_data_dir().unwrap_or_else(|_| {
+                std::env::current_dir()
+                    .unwrap_or_default()
+                    .join(".mynotes_data")
+            });
 
             let db = Arc::new(
-                Database::new(app_data_dir.clone())
-                    .expect("Failed to initialize SQLite database"),
+                Database::new(app_data_dir.clone()).expect("Failed to initialize SQLite database"),
             );
+            // Keep the native title bar and fullscreen chrome aligned with the saved app theme.
+            if let Ok(settings) = db.get_settings() {
+                apply_native_theme(app.handle(), &settings.theme);
+            }
+            #[cfg(target_os = "macos")]
+            configure_native_chrome(app.handle());
             let cloud = Arc::new(CloudSyncManager::new(db.clone()));
-            let ai = Arc::new(AiStreamManager::default());
 
             app.manage(AppState {
                 db: db.clone(),
                 cloud: cloud.clone(),
-                ai,
                 data_dir: app_data_dir,
             });
 
@@ -89,8 +145,6 @@ pub fn run() {
             commands::cloud_login,
             commands::cloud_logout,
             commands::cloud_sync_now,
-            commands::ai_chat_completion_stream,
-            commands::ai_cancel_stream,
             commands::window_minimize,
             commands::window_maximize,
             commands::window_close,

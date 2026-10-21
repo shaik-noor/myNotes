@@ -1,10 +1,3 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-use base64::engine::general_purpose::STANDARD as BASE64;
-use base64::Engine;
-use tauri::{AppHandle, State, Window};
-use tauri_plugin_opener::OpenerExt;
-use crate::ai::AiStreamManager;
 use crate::attachments;
 use crate::cloud::CloudSyncManager;
 use crate::db::Database;
@@ -13,24 +6,36 @@ use crate::types::{
     AppSettings, BacklinkItem, BackupManifest, CloudSyncConfig, CloudSyncResult, MoveNoteResult,
     Note, NoteAttachment, NoteImportResult, ResultResponse,
 };
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
+use std::path::PathBuf;
+use std::sync::Arc;
+use tauri::{AppHandle, State, Window};
+use tauri_plugin_opener::OpenerExt;
 
 pub struct AppState {
     pub db: Arc<Database>,
     pub cloud: Arc<CloudSyncManager>,
-    pub ai: Arc<AiStreamManager>,
     pub data_dir: PathBuf,
 }
 
 #[tauri::command]
-pub async fn storage_load(state: State<'_, AppState>, key: String) -> Result<ResultResponse<serde_json::Value>, ()> {
+pub async fn storage_load(
+    state: State<'_, AppState>,
+    key: String,
+) -> Result<ResultResponse<serde_json::Value>, ()> {
     if key == "notes" {
         match state.db.load_notes() {
-            Ok(notes) => Ok(ResultResponse::ok(serde_json::to_value(notes).unwrap_or_default())),
+            Ok(notes) => Ok(ResultResponse::ok(
+                serde_json::to_value(notes).unwrap_or_default(),
+            )),
             Err(e) => Ok(ResultResponse::err(e)),
         }
     } else if key == "settings" {
         match state.db.get_settings() {
-            Ok(settings) => Ok(ResultResponse::ok(serde_json::to_value(settings).unwrap_or_default())),
+            Ok(settings) => Ok(ResultResponse::ok(
+                serde_json::to_value(settings).unwrap_or_default(),
+            )),
             Err(e) => Ok(ResultResponse::err(e)),
         }
     } else {
@@ -102,7 +107,12 @@ pub async fn notes_move(
     prev_sibling_sort_key: Option<String>,
     next_sibling_sort_key: Option<String>,
 ) -> Result<ResultResponse<MoveNoteResult>, ()> {
-    match state.db.move_note(&id, new_parent_id, prev_sibling_sort_key, next_sibling_sort_key) {
+    match state.db.move_note(
+        &id,
+        new_parent_id,
+        prev_sibling_sort_key,
+        next_sibling_sort_key,
+    ) {
         Ok(res) => Ok(ResultResponse::ok(res)),
         Err(e) => Ok(ResultResponse::err(e)),
     }
@@ -155,8 +165,10 @@ pub async fn attachment_list(
     state: State<'_, AppState>,
     note_id: String,
 ) -> Result<ResultResponse<Vec<NoteAttachment>>, ()> {
-    let res = attachments::list_attachments(&state.data_dir, &state.db, &note_id);
-    Ok(ResultResponse::ok(res))
+    match attachments::list_attachments(&state.db, &note_id) {
+        Ok(items) => Ok(ResultResponse::ok(items)),
+        Err(error) => Ok(ResultResponse::err(error)),
+    }
 }
 
 #[tauri::command]
@@ -168,7 +180,9 @@ pub async fn attachment_get_data_url(
         Ok(Some(row)) => {
             if let Some(data) = row.data {
                 let ext = row.ext.unwrap_or_default();
-                let mime = row.mime.unwrap_or_else(|| attachments::guess_mime(&ext).to_string());
+                let mime = row
+                    .mime
+                    .unwrap_or_else(|| attachments::guess_mime(&ext).to_string());
                 let data_url = format!("data:{};base64,{}", mime, data);
                 Ok(ResultResponse::ok(serde_json::json!({
                     "mime": mime,
@@ -218,8 +232,10 @@ pub async fn attachment_open(
         Ok(Some(row)) => {
             if let Some(disk_path) = attachments::materialize_row(&state.data_dir, &row) {
                 let path_str = disk_path.to_string_lossy().to_string();
-                let _ = app_handle.opener().open_path(&path_str, None::<&str>);
-                Ok(ResultResponse::ok_void())
+                match app_handle.opener().open_path(&path_str, None::<&str>) {
+                    Ok(_) => Ok(ResultResponse::ok_void()),
+                    Err(e) => Ok(ResultResponse::err(e.to_string())),
+                }
             } else {
                 Ok(ResultResponse::err("Failed to materialize attachment"))
             }
@@ -239,8 +255,10 @@ pub async fn attachment_reveal(
         Ok(Some(row)) => {
             if let Some(disk_path) = attachments::materialize_row(&state.data_dir, &row) {
                 let path_str = disk_path.to_string_lossy().to_string();
-                let _ = app_handle.opener().reveal_item_in_dir(&path_str);
-                Ok(ResultResponse::ok_void())
+                match app_handle.opener().reveal_item_in_dir(&path_str) {
+                    Ok(_) => Ok(ResultResponse::ok_void()),
+                    Err(e) => Ok(ResultResponse::err(e.to_string())),
+                }
             } else {
                 Ok(ResultResponse::err("Failed to materialize attachment"))
             }
@@ -262,7 +280,9 @@ pub async fn attachment_remove(
 }
 
 #[tauri::command]
-pub async fn app_get_settings(state: State<'_, AppState>) -> Result<ResultResponse<AppSettings>, ()> {
+pub async fn app_get_settings(
+    state: State<'_, AppState>,
+) -> Result<ResultResponse<AppSettings>, ()> {
     match state.db.get_settings() {
         Ok(s) => Ok(ResultResponse::ok(s)),
         Err(e) => Ok(ResultResponse::err(e)),
@@ -272,10 +292,14 @@ pub async fn app_get_settings(state: State<'_, AppState>) -> Result<ResultRespon
 #[tauri::command]
 pub async fn app_save_settings(
     state: State<'_, AppState>,
+    app_handle: AppHandle,
     settings: serde_json::Value,
 ) -> Result<ResultResponse<AppSettings>, ()> {
     match state.db.save_settings(settings) {
-        Ok(s) => Ok(ResultResponse::ok(s)),
+        Ok(s) => {
+            crate::apply_native_theme(&app_handle, &s.theme);
+            Ok(ResultResponse::ok(s))
+        }
         Err(e) => Ok(ResultResponse::err(e)),
     }
 }
@@ -305,17 +329,24 @@ pub async fn backup_import(
     match std::fs::read_to_string(&source_path) {
         Ok(raw) => match serde_json::from_str::<BackupManifest>(&raw) {
             Ok(manifest) => match state.db.import_backup(manifest) {
-                Ok(count) => Ok(ResultResponse::ok(serde_json::json!({ "noteCount": count }))),
+                Ok(count) => Ok(ResultResponse::ok(
+                    serde_json::json!({ "noteCount": count }),
+                )),
                 Err(e) => Ok(ResultResponse::err(e)),
             },
             Err(e) => Ok(ResultResponse::err(format!("Invalid backup JSON: {}", e))),
         },
-        Err(e) => Ok(ResultResponse::err(format!("Failed to read backup file: {}", e))),
+        Err(e) => Ok(ResultResponse::err(format!(
+            "Failed to read backup file: {}",
+            e
+        ))),
     }
 }
 
 #[tauri::command]
-pub async fn cloud_get_config(state: State<'_, AppState>) -> Result<ResultResponse<CloudSyncConfig>, ()> {
+pub async fn cloud_get_config(
+    state: State<'_, AppState>,
+) -> Result<ResultResponse<CloudSyncConfig>, ()> {
     Ok(ResultResponse::ok(state.cloud.get_config()))
 }
 
@@ -361,30 +392,6 @@ pub async fn cloud_sync_now(
         Ok(res) => Ok(ResultResponse::ok(res)),
         Err(e) => Ok(ResultResponse::err(e)),
     }
-}
-
-#[tauri::command]
-pub async fn ai_chat_completion_stream(
-    state: State<'_, AppState>,
-    app_handle: AppHandle,
-    stream_id: String,
-    _system_prompt: String,
-    messages: Vec<serde_json::Value>,
-) -> Result<ResultResponse<()>, ()> {
-    let ai = state.ai.clone();
-    tokio::spawn(async move {
-        ai.stream_completion(app_handle, stream_id, messages).await;
-    });
-    Ok(ResultResponse::ok_void())
-}
-
-#[tauri::command]
-pub async fn ai_cancel_stream(
-    state: State<'_, AppState>,
-    stream_id: String,
-) -> Result<ResultResponse<()>, ()> {
-    state.ai.cancel(&stream_id);
-    Ok(ResultResponse::ok_void())
 }
 
 #[tauri::command]
