@@ -118,11 +118,14 @@ export function buildNoteTree(notes: Note[]): NoteTreeNode[] {
   return roots
 }
 
+export type HomeTab = 'notes' | 'templates' | 'scratchpad' | 'tasks'
+
 interface NotesState {
   notes: Note[]
   notesLoaded: boolean
   notesLoadError: string | null
   selectedNoteId: string | null
+  activeHomeTab: HomeTab
   notesSearchQuery: string
   expandedNoteIds: Set<string>
   navigationHistory: Array<{ selectedNoteId: string | null }>
@@ -130,6 +133,7 @@ interface NotesState {
 
   loadNotes: () => Promise<void>
   setSelectedNoteId: (id: string | null) => void
+  setActiveHomeTab: (tab: HomeTab) => void
   setNotesSearchQuery: (query: string) => void
   toggleNoteExpanded: (id: string) => void
   setNoteExpanded: (id: string, expanded: boolean) => void
@@ -168,6 +172,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   notesLoaded: false,
   notesLoadError: null,
   selectedNoteId: null,
+  activeHomeTab: 'notes',
+  setActiveHomeTab: (tab) => set({ activeHomeTab: tab }),
   notesSearchQuery: '',
   expandedNoteIds: new Set<string>(),
   navigationHistory: [],

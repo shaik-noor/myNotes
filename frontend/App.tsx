@@ -5,6 +5,7 @@ import { NotesSidebarPanel } from './components/notes/sidebar/NotesSidebarPanel'
 import type { SettingsTab } from './components/SettingsDialog'
 import { SettingsDialog } from './components/SettingsDialog'
 import { TitleBar } from './components/TitleBar'
+import { AppLogo } from './components/ui/AppLogo'
 import { DialogDescription, DialogTitle } from './components/ui/dialog'
 import { Sheet, SheetContent } from './components/ui/sheet'
 import { useMediaQuery } from './components/ui/useMediaQuery'
@@ -104,7 +105,8 @@ export const App: React.FC = () => {
         <TitleBar
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          onOpenSettings={() => {
+          onOpenSettings={(tab) => {
+            if (tab) setSettingsTab(tab)
             setSettingsOpen(true)
           }}
         />
@@ -115,13 +117,31 @@ export const App: React.FC = () => {
               <SheetContent
                 side="left"
                 id="notes-navigation"
+                onOpenAutoFocus={(event) => {
+                  event.preventDefault()
+                  document.getElementById('notes-navigation')?.focus()
+                }}
                 className="w-[min(320px,88vw)] max-w-none gap-0 overflow-hidden bg-sidebar p-0"
               >
-                <DialogTitle className="sr-only">Your pages</DialogTitle>
+                <div className="flex h-14 shrink-0 items-center border-b border-border/50 px-4 pr-14">
+                  <DialogTitle className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+                    <AppLogo size={24} />
+                    <span>MyNotes</span>
+                  </DialogTitle>
+                </div>
                 <DialogDescription className="sr-only">
                   Find a page or create a new one.
                 </DialogDescription>
-                <NotesSidebarPanel onNavigate={() => setSidebarOpen(false)} />
+                <div className="min-h-0 flex-1">
+                  <NotesSidebarPanel
+                    onNavigate={() => setSidebarOpen(false)}
+                    onOpenSettings={(tab) => {
+                      setSidebarOpen(false)
+                      if (tab) setSettingsTab(tab)
+                      setSettingsOpen(true)
+                    }}
+                  />
+                </div>
               </SheetContent>
             </Sheet>
           ) : (
@@ -145,7 +165,12 @@ export const App: React.FC = () => {
                   transition: isDragging ? 'none' : undefined
                 }}
               >
-                <NotesSidebarPanel />
+                <NotesSidebarPanel
+                  onOpenSettings={(tab) => {
+                    if (tab) setSettingsTab(tab)
+                    setSettingsOpen(true)
+                  }}
+                />
                 <div className="absolute right-0 top-0 z-20 h-full w-2">
                   <PanelResizeHandle onMouseDown={onHandleMouseDown} isDragging={isDragging} />
                 </div>

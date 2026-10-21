@@ -1,3 +1,4 @@
+import { isTauri } from '@tauri-apps/api/core'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import * as React from 'react'
@@ -10,9 +11,13 @@ export const SheetContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { side?: 'left' | 'right' }
 >(({ side = 'right', className, children, ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="sheet-overlay fixed inset-0 z-50 bg-black/35" />
+    <DialogPrimitive.Overlay
+      data-native-mac={isTauri() && /Mac/i.test(navigator.platform) ? 'true' : undefined}
+      className="sheet-overlay fixed inset-0 z-50 bg-black/35"
+    />
     <DialogPrimitive.Content
       ref={ref}
+      data-native-mac={isTauri() && /Mac/i.test(navigator.platform) ? 'true' : undefined}
       data-side={side}
       data-slot="sheet"
       className={cn(

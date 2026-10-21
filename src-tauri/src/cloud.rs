@@ -264,7 +264,7 @@ impl CloudSyncManager {
     ) -> Result<(String, String), String> {
         let auth_server_url = self.get_auth_server_url();
         if auth_server_url.is_empty() {
-            return Err("Google Drive sync isn't available in this build of myNotes.".to_string());
+            return Err("Google Drive sync isn't available in this build of MyNotes.".to_string());
         }
 
         let mut verifier_bytes = [0u8; 32];
@@ -412,11 +412,11 @@ impl CloudSyncManager {
 
                         let html = r#"
                         <html>
-                          <head><title>myNotes - Connected</title></head>
+                          <head><title>MyNotes - Connected</title></head>
                           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1115; color: #f8fafc; text-align: center; padding: 60px 20px;">
                             <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 32px; margin-bottom: 20px;">✓</div>
                             <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 10px 0;">Google Drive Connected!</h1>
-                            <p style="color: #94a3b8; font-size: 14px; max-width: 420px; margin: 0 auto 24px auto;">myNotes is now connected to your private Google Drive storage. You can safely close this tab and return to the app.</p>
+                            <p style="color: #94a3b8; font-size: 14px; max-width: 420px; margin: 0 auto 24px auto;">MyNotes is now connected to your private Google Drive storage. You can safely close this tab and return to the app.</p>
                             <script>setTimeout(function() { window.close(); }, 3000);</script>
                           </body>
                         </html>"#;
@@ -492,7 +492,7 @@ impl CloudSyncManager {
 
         let auth_server_url = self.get_auth_server_url();
         if auth_server_url.is_empty() {
-            return Err("Google Drive sync isn't available in this build of myNotes.".to_string());
+            return Err("Google Drive sync isn't available in this build of MyNotes.".to_string());
         }
 
         #[derive(Deserialize)]

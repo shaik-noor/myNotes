@@ -25,7 +25,7 @@ export const tauriApi = {
     },
     backup: async (): Promise<Result<string>> => {
       const dateStr = new Date().toISOString().split('T')[0]
-      const defaultFilename = `myNotes-backup-${dateStr}.json`
+      const defaultFilename = `MyNotes-backup-${dateStr}.json`
       const targetPath = await saveDialog({
         title: 'Export Notes Backup',
         defaultPath: defaultFilename,
@@ -165,7 +165,7 @@ export const tauriApi = {
     },
     exportBackup: async (): Promise<Result<string>> => {
       const dateStr = new Date().toISOString().split('T')[0]
-      const defaultFilename = `myNotes-backup-${dateStr}.json`
+      const defaultFilename = `MyNotes-backup-${dateStr}.json`
       const targetPath = await saveDialog({
         title: 'Export Notes Backup',
         defaultPath: defaultFilename,

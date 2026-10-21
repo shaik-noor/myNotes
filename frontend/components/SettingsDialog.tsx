@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useNotesStore } from '../store/useNotesStore'
 import type { CloudSyncConfig, EditorFont, Palette as PaletteType } from '../types/notes'
+import { AppLogo } from './ui/AppLogo'
 import { Button } from './ui/button'
 import { confirmDialog } from './ui/confirm'
 import { DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
@@ -314,7 +315,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
       id: 'updates',
       label: 'What’s new',
       icon: Sparkles,
-      description: 'Changes and improvements to myNotes.'
+      description: 'Changes and improvements to MyNotes.'
     },
     {
       id: 'about',
@@ -384,7 +385,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               </button>
             ))}
             <span className="mt-auto px-3 py-2 text-xs text-muted-foreground">
-              myNotes · {APP_VERSION}
+              MyNotes · {APP_VERSION}
             </span>
           </nav>
           <div className="min-w-0 flex-1 overflow-y-auto p-5 sm:p-7">
@@ -576,7 +577,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </label>
                 )}
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Notes and files are stored in the app’s private Google Drive folder. myNotes does
+                  Notes and files are stored in the app’s private Google Drive folder. MyNotes does
                   not add end-to-end encryption. Disconnecting keeps the notes on this device.
                 </p>
               </div>
@@ -621,8 +622,13 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             {activeTab === 'about' && (
               <div className="space-y-5">
                 <div className="rounded-lg border border-border p-4">
-                  <h3 className="text-base font-semibold">myNotes</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Version {APP_VERSION}</p>
+                  <div className="flex items-center gap-3">
+                    <AppLogo size={48} />
+                    <div>
+                      <h3 className="text-base font-semibold">MyNotes</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">Version {APP_VERSION}</p>
+                    </div>
+                  </div>
                   <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
                     Write, organize, and find your notes. Your pages live on this device, with
                     optional Google Drive sync.

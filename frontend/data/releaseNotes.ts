@@ -10,9 +10,37 @@ export interface ReleaseItem {
   }[]
 }
 
-export const APP_VERSION = '1.1.0'
+export const APP_VERSION = '1.2.0'
 
 export const RELEASE_HISTORY: ReleaseItem[] = [
+  {
+    version: '1.2.0',
+    date: 'October 2026',
+    title: 'Brand Refresh & Native macOS Experience',
+    highlights: [
+      {
+        category: 'ui',
+        badge: 'New Brand',
+        title: 'New Logo & MyNotes Identity',
+        description:
+          'Updated brand identity featuring folded ivory notebook pages on midnight blue, unified across native icons, dock, title bar, and dialogs.'
+      },
+      {
+        category: 'ui',
+        badge: 'macOS Native',
+        title: 'Seamless Window Styling & Safe Insets',
+        description:
+          'Eliminated inner frame highlights on dark theme, transparent traffic-light titlebar integration, and unified safe-area insets below the 48px header for all sheets.'
+      },
+      {
+        category: 'ui',
+        badge: 'Accessibility',
+        title: 'Focused Panels & Keyboard Trapping',
+        description:
+          'Dialogs and drawers now feature focused keyboard containment, boundary-constrained focus outlines, and automatic navigation drawer dismissal when opening settings.'
+      }
+    ]
+  },
   {
     version: '1.1.0',
     date: 'October 2026',
@@ -65,7 +93,7 @@ export const RELEASE_HISTORY: ReleaseItem[] = [
         badge: 'Privacy',
         title: 'Disconnect Now Revokes Access at Google',
         description:
-          'Disconnecting Google Drive now also revokes access to myNotes in your Google account, not just the sign-in on this device.'
+          'Disconnecting Google Drive now also revokes access to MyNotes in your Google account, not just the sign-in on this device.'
       }
     ]
   },
@@ -79,14 +107,14 @@ export const RELEASE_HISTORY: ReleaseItem[] = [
         badge: 'Zero Setup',
         title: 'Just Sign In with Google',
         description:
-          'Google Drive sync no longer shows OAuth client ID, secret, or relay settings. Sign-in always goes through the secure myNotes relay, and old saved credentials are removed from your device.'
+          'Google Drive sync no longer shows OAuth client ID, secret, or relay settings. Sign-in always goes through the secure MyNotes relay, and old saved credentials are removed from your device.'
       },
       {
         category: 'fixes',
         badge: 'Reconnect',
         title: 'Clear Prompt When Access Expires',
         description:
-          'If Google access is revoked or expires, myNotes now signs you out cleanly and asks you to sign in again instead of failing every sync.'
+          'If Google access is revoked or expires, MyNotes now signs you out cleanly and asks you to sign in again instead of failing every sync.'
       }
     ]
   },

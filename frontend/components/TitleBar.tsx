@@ -2,21 +2,27 @@ import { isTauri } from '@tauri-apps/api/core'
 import {
   ArrowLeft,
   ArrowRight,
-  NotebookPen,
   PanelLeftClose,
   PanelLeftOpen,
+  PenSquare,
+  Search,
   Settings
 } from 'lucide-react'
 import type React from 'react'
+import type { SettingsTab } from './SettingsDialog'
 import { useNotesStore } from '../store/useNotesStore'
 import { Button } from './ui/button'
+import { AppLogo } from './ui/AppLogo'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { cn } from './ui/utils'
 
 interface TitleBarProps {
   sidebarOpen: boolean
+  sidebarWidth?: number
+  compact?: boolean
   onToggleSidebar: () => void
-  onOpenSettings: () => void
+  onOpenSettings: (tab?: SettingsTab) => void
+  onCreateNote?: () => void
 }
 
 const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
@@ -24,32 +30,60 @@ const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform
 export const TitleBar: React.FC<TitleBarProps> = ({
   sidebarOpen,
   onToggleSidebar,
-  onOpenSettings
+  onOpenSettings,
+  onCreateNote
 }) => {
   const canGoBack = useNotesStore((s) => s.navigationIndex > 0)
   const canGoForward = useNotesStore((s) => s.navigationIndex < s.navigationHistory.length - 1)
   const goBack = useNotesStore((s) => s.goBack)
   const goForward = useNotesStore((s) => s.goForward)
+  const createNote = useNotesStore((s) => s.createNote)
+  const setNotesSearchQuery = useNotesStore((s) => s.setNotesSearchQuery)
+  const setSelectedNoteId = useNotesStore((s) => s.setSelectedNoteId)
+
+  const handleCreate = () => {
+    if (onCreateNote) {
+      onCreateNote()
+    } else {
+      void createNote('Untitled page')
+    }
+  }
+
+  const isNativeMac = isMac && isTauri()
 
   return (
     <header
       data-slot="titlebar"
       data-tauri-drag-region
       className={cn(
-        'grid h-12 w-full shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 bg-background px-3 select-none',
-        isMac && isTauri() && '[&>nav]:pl-[84px]'
+        'relative flex h-12 w-full shrink-0 items-center justify-between px-3 select-none z-30',
+        'bg-sidebar/80 backdrop-blur-md border-b border-border/40 transition-colors'
       )}
     >
-      <nav aria-label="Page navigation controls" className="flex min-w-0 items-center gap-1">
+      {/* Left Section: macOS traffic lights + Sidebar Toggle + App Branding */}
+      <div className="flex items-center gap-2 min-w-0">
+        {/* macOS Traffic Lights / Space */}
+        {isNativeMac ? (
+          <div className="w-[72px] shrink-0" data-tauri-drag-region />
+        ) : (
+          <div className="flex items-center gap-1.5 pl-1 pr-2 py-1 shrink-0" data-tauri-drag-region>
+            <span className="size-3 rounded-full bg-[#ff5f57] border border-[#e0443e] inline-block shadow-2xs" />
+            <span className="size-3 rounded-full bg-[#febc2e] border border-[#d89e24] inline-block shadow-2xs" />
+            <span className="size-3 rounded-full bg-[#28c840] border border-[#1aab29] inline-block shadow-2xs" />
+          </div>
+        )}
+
+        {/* Sidebar Toggle Button */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               onClick={onToggleSidebar}
-              aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+              aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
               aria-expanded={sidebarOpen}
               aria-controls="notes-navigation"
+              className="size-8 rounded-lg text-muted-foreground hover:bg-card hover:text-foreground hover:shadow-2xs transition-all"
             >
               {sidebarOpen ? (
                 <PanelLeftClose className="size-4" />
@@ -58,46 +92,109 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{sidebarOpen ? 'Close sidebar' : 'Open sidebar'}</TooltipContent>
+          <TooltipContent side="bottom">
+            {sidebarOpen ? 'Collapse sidebar (⌘\\)' : 'Expand sidebar (⌘\\)'}
+          </TooltipContent>
         </Tooltip>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={goBack}
-          disabled={!canGoBack}
-          aria-label="Back"
-          className="hidden sm:inline-flex"
+
+        {/* App Logo & Wordmark (always visible when sidebar collapsed, or brand header) */}
+        <button
+          type="button"
+          onClick={() => setSelectedNoteId(null)}
+          className="flex items-center gap-2 px-1.5 py-1 rounded-lg hover:bg-card/60 transition-colors"
+          title="Return to Home"
         >
-          <ArrowLeft className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={goForward}
-          disabled={!canGoForward}
-          aria-label="Forward"
-          className="hidden sm:inline-flex"
-        >
-          <ArrowRight className="size-4" />
-        </Button>
-      </nav>
-      <div
-        data-tauri-drag-region
-        className="flex items-center justify-center gap-2 text-sm font-semibold tracking-tight text-foreground"
-      >
-        <NotebookPen aria-hidden="true" className="pointer-events-none size-4 text-notes" />
-        <span className="pointer-events-none">myNotes</span>
+          <AppLogo size={24} />
+          <span className="text-sm font-semibold tracking-tight text-foreground font-sans">
+            MyNotes
+          </span>
+        </button>
+
+        {/* Navigation History Controls */}
+        <div className="hidden sm:flex items-center gap-0.5 ml-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={goBack}
+            disabled={!canGoBack}
+            aria-label="Back"
+            className="size-7 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30"
+          >
+            <ArrowLeft className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={goForward}
+            disabled={!canGoForward}
+            aria-label="Forward"
+            className="size-7 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30"
+          >
+            <ArrowRight className="size-3.5" />
+          </Button>
+        </div>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onOpenSettings}
-        aria-label="Settings and help"
-        className="h-8 shrink-0 justify-self-end gap-2 text-muted-foreground"
-      >
-        <Settings className="size-4" />
-        <span className="hidden sm:inline">Settings</span>
-      </Button>
+
+      {/* Center drag region */}
+      <div className="flex-1 h-full cursor-default" data-tauri-drag-region />
+
+      {/* Right Section: Floating Action Cluster */}
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Action Pill Cluster */}
+        <div className="flex items-center rounded-full bg-card border border-border/70 p-0.5 shadow-2xs">
+          {/* Quick New Note / Pencil */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleCreate}
+                aria-label="New note"
+                className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <PenSquare className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">New note (⌘N)</TooltipContent>
+          </Tooltip>
+
+          {/* Quick Search */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  setNotesSearchQuery('')
+                  const searchInput = document.querySelector<HTMLInputElement>(
+                    'input[aria-label="Search your pages"], input[aria-label="Search notes"]'
+                  )
+                  searchInput?.focus()
+                }}
+                aria-label="Search"
+                className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Search className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Find in notes</TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* Settings button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => onOpenSettings()}
+              aria-label="Settings and help"
+              className="size-8 rounded-full text-muted-foreground hover:bg-card hover:text-foreground hover:shadow-2xs transition-all"
+            >
+              <Settings className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Settings (⌘,)</TooltipContent>
+        </Tooltip>
+      </div>
     </header>
   )
 }

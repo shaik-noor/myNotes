@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <h1 className="text-base font-semibold text-white">
                   Application encountered an error
                 </h1>
-                <p className="text-xs text-neutral-400">myNotes could not complete rendering</p>
+                <p className="text-xs text-neutral-400">MyNotes could not complete rendering</p>
               </div>
             </div>
 

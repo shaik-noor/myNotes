@@ -151,5 +151,5 @@ pub fn run() {
             commands::window_is_maximized,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running myNotes tauri application");
+        .expect("error while running MyNotes tauri application");
 }

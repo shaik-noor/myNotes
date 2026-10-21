@@ -107,7 +107,7 @@ export function ConfirmDialog(): React.JSX.Element {
             document.getElementById('confirm-cancel')?.focus()
           }}
         >
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-4 pr-5">
             {dialogState.destructive && (
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
                 <AlertTriangle className="size-5" />
@@ -120,7 +120,7 @@ export function ConfirmDialog(): React.JSX.Element {
               </DialogDescription>
             </div>
           </div>
-          <div className="mt-4 flex justify-end gap-2.5">
+          <div className="mt-4 flex flex-wrap justify-end gap-2.5">
             <Button
               id="confirm-cancel"
               variant="outline"

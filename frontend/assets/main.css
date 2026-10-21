@@ -75,74 +75,74 @@ body {
 
 :root {
   color-scheme: light;
-  --background: oklch(0.99 0.002 255);
-  --foreground: oklch(0.24 0.015 255);
+  --background: oklch(0.992 0.003 245);
+  --foreground: oklch(0.22 0.015 255);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.16 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.46 0.012 255);
-  --accent: oklch(0.95 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.16 0 0);
+  --primary: oklch(0.55 0.18 250);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.965 0.008 245);
+  --secondary-foreground: oklch(0.22 0 0);
+  --muted: oklch(0.955 0.008 245);
+  --muted-foreground: oklch(0.48 0.015 250);
+  --accent: oklch(0.94 0.01 245);
+  --accent-foreground: oklch(0.2 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.915 0 0);
-  --input: oklch(0.915 0 0);
-  --ring: oklch(0.708 0 0);
-  --sidebar: oklch(0.97 0.004 255);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-border: oklch(0.915 0 0);
-  --sidebar-accent: oklch(0.93 0 0);
-  --sidebar-accent-foreground: oklch(0.145 0 0);
+  --border: oklch(0.915 0.005 245);
+  --input: oklch(0.915 0.005 245);
+  --ring: oklch(0.55 0.18 250);
+  --sidebar: oklch(0.965 0.008 245);
+  --sidebar-foreground: oklch(0.18 0.01 250);
+  --sidebar-border: oklch(0.915 0.005 245);
+  --sidebar-accent: oklch(0.925 0.012 245);
+  --sidebar-accent-foreground: oklch(0.14 0 0);
 
   /* notes accent */
-  --notes: oklch(0.6 0.13 163);
+  --notes: oklch(0.55 0.18 250);
   --notes-foreground: oklch(1 0 0);
-  --sf: oklch(0.6 0.15 237);
+  --sf: oklch(0.55 0.18 250);
 
   --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: "Merriweather Variable", Georgia, serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.06);
 }
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.18 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.18 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.22 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.22 0 0);
-  --muted-foreground: oklch(0.74 0.012 255);
-  --accent: oklch(0.24 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.135 0.005 240);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.17 0.006 240);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.17 0.006 240);
+  --popover-foreground: oklch(0.96 0 0);
+  --primary: oklch(0.74 0.13 250);
+  --primary-foreground: oklch(0.14 0 0);
+  --secondary: oklch(0.21 0.006 240);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.21 0.006 240);
+  --muted-foreground: oklch(0.72 0.012 255);
+  --accent: oklch(0.23 0.008 240);
+  --accent-foreground: oklch(0.96 0 0);
   --destructive: oklch(0.65 0.22 25);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.26 0 0);
-  --input: oklch(0.26 0 0);
-  --ring: oklch(0.4 0 0);
-  --sidebar: oklch(0.165 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.24 0 0);
-  --sidebar-accent: oklch(0.22 0 0);
+  --border: oklch(0.24 0.006 240);
+  --input: oklch(0.24 0.006 240);
+  --ring: oklch(0.74 0.13 250);
+  --sidebar: oklch(0.17 0.006 240);
+  --sidebar-foreground: oklch(0.96 0 0);
+  --sidebar-border: oklch(0.23 0.006 240);
+  --sidebar-accent: oklch(0.23 0.008 240);
   --sidebar-accent-foreground: oklch(0.985 0 0);
 
-  --notes: oklch(0.65 0.16 163);
-  --notes-foreground: oklch(1 0 0);
-  --sf: oklch(0.65 0.16 237);
+  --notes: oklch(0.74 0.13 250);
+  --notes-foreground: oklch(0.14 0.01 255);
+  --sf: oklch(0.74 0.13 250);
 }
 
 /* A darker accent supports white button labels in light mode; dark mode uses dark labels. */
@@ -812,4 +812,63 @@ body[data-palette="rose"] {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Modern desktop prompt and pill utilities */
+.notes-prompt-card {
+  background: var(--card);
+  border: 1px solid color-mix(in oklch, var(--foreground) 7%, transparent);
+  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.06), 0 2px 8px -1px rgba(0, 0, 0, 0.04);
+  border-radius: 1.75rem;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.notes-prompt-card:focus-within {
+  border-color: color-mix(in oklch, var(--notes) 40%, transparent);
+  box-shadow: 0 16px 40px -4px rgba(26, 115, 232, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+}
+
+.dark .notes-prompt-card {
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.4), 0 2px 8px -1px rgba(0, 0, 0, 0.2);
+  border: 1px solid color-mix(in oklch, var(--foreground) 10%, transparent);
+}
+
+.notes-action-pill {
+  border-radius: 9999px;
+  background: var(--card);
+  border: 1px solid color-mix(in oklch, var(--foreground) 8%, transparent);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.notes-gradient-text {
+  background: linear-gradient(135deg, #4285f4 0%, #9c27b0 50%, #ea4335 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+
+/* Keep sidebar focus feedback within controls, clear of clipped panel edges. */
+.notes-sidebar-panel :is(button, input, select, a):focus-visible {
+  outline: 2px solid var(--notes);
+  outline-offset: -3px;
+  --tw-ring-shadow: 0 0 #0000;
+}
+
+/* Native traffic lights always render above web content. Keep every drawer
+   below the 48px app toolbar instead of patching individual panel headings. */
+.sheet-panel[data-native-mac="true"] {
+  top: 48px;
+  height: calc(100dvh - 48px);
+}
+.sheet-overlay[data-native-mac="true"] {
+  top: 48px;
+}
+.sheet-panel [data-slot="dialog-header"] {
+  padding-right: 3.5rem;
+}
+/* A single inset focus outline cannot be clipped by a scrolling panel. */
+.sheet-panel :is(button, input, select, textarea, a):focus-visible {
+  outline: 2px solid var(--notes);
+  outline-offset: -3px;
+  --tw-ring-shadow: 0 0 #0000;
 }

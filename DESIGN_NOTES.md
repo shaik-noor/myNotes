@@ -77,3 +77,13 @@ The editor toolbar's bottom divider was removed. On macOS, the live NSWindow now
 ## Outer native window frame
 
 The later desktop screenshot marks the outside window perimeter, distinct from the title bar separator. The macOS NSWindow now uses `setOpaque(false)` and a clear native background while the HTML/body/app surfaces remain opaque and theme-colored. Native decorations, resizing, shadows, and traffic lights remain enabled. This targets the light inner frame highlight reported for opaque macOS windows in [Tauri issue 14394](https://github.com/tauri-apps/tauri/issues/14394); that report is supporting evidence, not proof of this app's rendered result. All 11 Rust tests pass, including native compilation. The perimeter cannot be verified in the browser preview and still needs visual confirmation in the restarted desktop app. Do not represent the earlier browser screenshots as proof that the native outer frame is gone.
+
+## Shared panel safe area review
+
+All native macOS sheets now start below the 48 px application toolbar. This applies to Settings, navigation, quick notes, cover and icon pickers, and the page outline, including full-width sheets on narrow windows. It replaces the navigation-only heading inset. Panel header text reserves space for the shared close button. Sheet controls use one inset keyboard-focus outline to avoid clipping against scroll containers. Confirmation dialogs now keep viewport margins, scroll within short windows, reserve space for their close control, and wrap actions. Popovers are constrained to viewport width and available height. Opening Settings from the compact sidebar closes navigation first.
+
+Frontend type checks, lint, 18 tests, and macOS application bundling passed. Native UI automation was unavailable during this review; final macOS rendering is not visually certified by browser or build checks.
+
+## Native verification and display name
+
+The rebuilt MyNotes app was opened directly from its bundle and checked using native UI automation. Settings was inspected at 1260 px and 730 px window widths, including the full-width layout; its heading and close button remain below the native title-bar region. Navigation was checked at 780 px with one close button, the shared logo and MyNotes wordmark, and a focused search field whose outline remains inside its border. Panel close actions worked. Screenshots are saved in `resources/native-settings-verified.png` and `resources/native-sidebar-verified.png`. The app menu, window, UI branding, and user-facing messages use MyNotes. The older Applications copy was not replaced.

@@ -69,7 +69,7 @@ const errorPage = (c: AppContext, title: string, message: string, status: 400 | 
   c.html(
     `<!DOCTYPE html>
 <html lang="en">
-  <head><meta charset="utf-8" /><title>${escapeHtml(title)} - myNotes</title></head>
+  <head><meta charset="utf-8" /><title>${escapeHtml(title)} - MyNotes</title></head>
   <body style="font-family: -apple-system, sans-serif; background: #0f1115; color: #f87171; text-align: center; padding: 60px 20px;">
     <h2>${escapeHtml(title)}</h2>
     <p style="color: #94a3b8;">${escapeHtml(message)}</p>
@@ -127,7 +127,7 @@ const readJson = async <T>(c: AppContext): Promise<T | null> => {
   }
 }
 
-// The myNotes home page, privacy policy and terms live on the verified main site (linked from the Google consent screen)
+// The MyNotes home page, privacy policy and terms live on the verified main site (linked from the Google consent screen)
 const SITE_PAGES: Record<string, string> = {
   '/': 'https://www.noruj.com/mynotes',
   '/privacy': 'https://www.noruj.com/mynotes/privacy',
@@ -139,7 +139,7 @@ for (const [path, target] of Object.entries(SITE_PAGES)) {
 
 app.get('/health', (c) =>
   c.json({
-    service: 'myNotes Google OAuth Relay',
+    service: 'MyNotes Google OAuth Relay',
     status: 'healthy',
     configured: isConfigured(c),
     version: '2.0.0'
@@ -153,7 +153,7 @@ app.get('/auth/login', (c) => {
   const codeChallenge = c.req.query('code_challenge')
 
   if (!port || !state || !STATE_RE.test(state) || !codeChallenge || !PKCE_RE.test(codeChallenge)) {
-    return errorPage(c, 'Invalid Request', 'Missing or invalid login parameters. Please start sign-in from the myNotes app.')
+    return errorPage(c, 'Invalid Request', 'Missing or invalid login parameters. Please start sign-in from the MyNotes app.')
   }
   if (!isConfigured(c)) {
     return errorPage(c, 'Service Unavailable', 'The authentication relay is not configured.', 500)
@@ -180,7 +180,7 @@ app.get('/auth/login', (c) => {
 app.get('/callback', (c) => {
   const target = decodeState(c.req.query('state'))
   if (!target) {
-    return errorPage(c, 'Invalid Request', 'This sign-in link is invalid or has expired. Please start sign-in from the myNotes app.')
+    return errorPage(c, 'Invalid Request', 'This sign-in link is invalid or has expired. Please start sign-in from the MyNotes app.')
   }
 
   const code = c.req.query('code')
