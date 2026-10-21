@@ -1,4 +1,20 @@
-# Release Notes: myNotes v1.1.0
+# Release Notes: MyNotes v1.2.0
+
+**Release Date:** October 21, 2026
+**Downloads:** `MyNotes_1.2.0_aarch64.dmg` (macOS Apple Silicon), `MyNotes_1.2.0_x64-setup.exe`, `MyNotes_1.2.0_x64_en-US.msi` (Windows x64)
+
+## 🌟 Brand Refresh & App Icon
+- **New Production App Icon:** A bespoke mark combining folded ivory notebook pages into a compact 'm' / open-notebook silhouette on a deep midnight blue tile, unified across macOS dock/menu, Windows ICO, favicons, and UI header.
+- **MyNotes Identity:** Standardized product naming across all menus, native macOS title bar, dialogs, and Google Drive auth sync pages.
+
+## 🪟 macOS & Windows Native Polish
+- **Seamless Window Chrome:** Completely eliminated inner light frame highlights on dark themes using transparent titlebar integration and adaptive background coloring.
+- **Safe Area Insets:** Fixed 48 px top clearance for navigation drawers and settings sheets below custom traffic-light controls.
+- **Focus Containment & Accessibility:** Constrained keyboard focus rings within visible bounds, added focus trapping inside sheets, and automatic navigation dismissal when opening settings.
+
+---
+
+# Release Notes: MyNotes v1.1.0
 
 **Release Date:** October 21, 2026
 **Downloads:** `myNotes_1.1.0_aarch64.dmg` (macOS Apple Silicon), `myNotes_1.1.0_x64-setup.exe`, `myNotes_1.1.0_x64_en-US.msi` (Windows x64)
