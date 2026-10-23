@@ -81,6 +81,9 @@ impl Database {
                 value TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS deleted_notes (id TEXT PRIMARY KEY);
+            CREATE TABLE IF NOT EXISTS deleted_attachments (id TEXT PRIMARY KEY);
+
             CREATE TABLE IF NOT EXISTS cloud_sync (
                 key TEXT PRIMARY KEY,
                 value TEXT
@@ -99,6 +102,10 @@ impl Database {
 
     pub fn load_notes(&self) -> Result<Vec<Note>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        Self::load_notes_from_conn(&conn)
+    }
+
+    fn load_notes_from_conn(conn: &Connection) -> Result<Vec<Note>, String> {
         let mut stmt = conn
             .prepare("SELECT id, caseId, caseNumber, title, content, createdAt, updatedAt, icon, coverImage, pinned, tags, fullWidth, parentId, sortKey FROM notes")
             .map_err(|e| e.to_string())?;
@@ -197,9 +204,89 @@ impl Database {
         let mut conn = self.conn.lock().map_err(|e| e.to_string())?;
         let tx = conn.transaction().map_err(|e| e.to_string())?;
 
+        Self::record_missing_notes(&tx, &notes_list)?;
+        let deleted = Self::deleted_ids(&tx, "deleted_notes")?;
+        let (notes_list, deleted) = Self::filter_deleted_notes(notes_list, &deleted);
+        Self::store_deleted_ids(&tx, "deleted_notes", &deleted)?;
         Self::write_notes(&tx, &notes_list)?;
         tx.commit().map_err(|e| e.to_string())?;
         Ok(())
+    }
+
+    fn deleted_ids(conn: &Connection, table: &str) -> Result<HashSet<String>, String> {
+        let mut stmt = conn
+            .prepare(&format!("SELECT id FROM {}", table))
+            .map_err(|e| e.to_string())?;
+        let ids = stmt
+            .query_map([], |r| r.get(0))
+            .map_err(|e| e.to_string())?
+            .collect::<Result<HashSet<String>, _>>()
+            .map_err(|e| e.to_string())?;
+        Ok(ids)
+    }
+
+    fn store_deleted_ids(
+        conn: &Connection,
+        table: &str,
+        ids: &HashSet<String>,
+    ) -> Result<(), String> {
+        for id in ids {
+            conn.execute(
+                &format!("INSERT OR IGNORE INTO {} (id) VALUES (?)", table),
+                params![id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+
+    fn record_missing_notes(conn: &Connection, notes: &[Note]) -> Result<(), String> {
+        let incoming: HashSet<_> = notes.iter().map(|n| n.id.as_str()).collect();
+        for note in Self::load_notes_from_conn(conn)? {
+            if !incoming.contains(note.id.as_str()) {
+                conn.execute(
+                    "INSERT OR IGNORE INTO deleted_notes (id) VALUES (?)",
+                    params![note.id],
+                )
+                .map_err(|e| e.to_string())?;
+                conn.execute(
+                    "INSERT OR IGNORE INTO deleted_attachments (id) SELECT id FROM note_attachments WHERE noteId = ?",
+                    params![note.id],
+                )
+                .map_err(|e| e.to_string())?;
+            }
+        }
+        Ok(())
+    }
+
+    // Deleting a notebook also deletes descendants introduced by an offline device.
+    fn filter_deleted_notes(
+        notes: Vec<Note>,
+        deleted: &HashSet<String>,
+    ) -> (Vec<Note>, HashSet<String>) {
+        let mut deleted = deleted.clone();
+        loop {
+            let before = deleted.len();
+            for note in &notes {
+                if note
+                    .parent_id
+                    .as_ref()
+                    .is_some_and(|id| deleted.contains(id))
+                {
+                    deleted.insert(note.id.clone());
+                }
+            }
+            if deleted.len() == before {
+                break;
+            }
+        }
+        (
+            notes
+                .into_iter()
+                .filter(|n| !deleted.contains(&n.id))
+                .collect(),
+            deleted,
+        )
     }
 
     fn write_notes(tx: &Connection, notes_list: &[Note]) -> Result<(), String> {
@@ -402,6 +489,10 @@ impl Database {
 
     pub fn get_settings(&self) -> Result<AppSettings, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        Self::settings_from_conn(&conn)
+    }
+
+    fn settings_from_conn(conn: &Connection) -> Result<AppSettings, String> {
         let val: Option<String> = conn
             .query_row(
                 "SELECT value FROM settings WHERE key = 'app_settings'",
@@ -531,9 +622,16 @@ impl Database {
     }
 
     pub fn delete_note_attachment(&self, id: &str) -> Result<(), String> {
-        let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        conn.execute("DELETE FROM note_attachments WHERE id = ?", params![id])
+        let mut conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let tx = conn.transaction().map_err(|e| e.to_string())?;
+        tx.execute(
+            "INSERT OR IGNORE INTO deleted_attachments (id) VALUES (?)",
+            params![id],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.execute("DELETE FROM note_attachments WHERE id = ?", params![id])
             .map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -573,9 +671,12 @@ impl Database {
 
     // Backup & Restore
     pub fn export_backup(&self) -> Result<BackupManifest, String> {
-        let notes = self.load_notes()?;
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        Self::export_from_conn(&conn)
+    }
 
+    fn export_from_conn(conn: &Connection) -> Result<BackupManifest, String> {
+        let notes = Self::load_notes_from_conn(conn)?;
         let mut stmt = conn.prepare("SELECT id, noteId, name, kind, ext, mime, size, data, createdAt FROM note_attachments")
             .map_err(|e| e.to_string())?;
 
@@ -608,13 +709,14 @@ impl Database {
         }
 
         drop(stmt);
-        drop(conn);
-        let settings = Some(self.get_settings()?);
+        let settings = Some(Self::settings_from_conn(conn)?);
 
         Ok(BackupManifest {
             version: 1,
             timestamp: chrono::Utc::now().to_rfc3339(),
             notes,
+            deleted_note_ids: Self::deleted_ids(conn, "deleted_notes")?,
+            deleted_attachment_ids: Self::deleted_ids(conn, "deleted_attachments")?,
             note_attachments,
             settings,
         })
@@ -628,6 +730,14 @@ impl Database {
         let mut conn = self.conn.lock().map_err(|e| e.to_string())?;
         let tx = conn.transaction().map_err(|e| e.to_string())?;
 
+        Self::record_missing_notes(&tx, &manifest.notes)?;
+        Self::store_deleted_ids(&tx, "deleted_notes", &manifest.deleted_note_ids)?;
+        Self::store_deleted_ids(&tx, "deleted_attachments", &manifest.deleted_attachment_ids)?;
+        // An explicit backup restore may restore IDs deleted on this device.
+        for note in &manifest.notes {
+            tx.execute("DELETE FROM deleted_notes WHERE id = ?", params![note.id])
+                .map_err(|e| e.to_string())?;
+        }
         Self::write_notes(&tx, &manifest.notes)?;
         tx.execute("DELETE FROM note_attachments", [])
             .map_err(|e| e.to_string())?;
@@ -643,6 +753,11 @@ impl Database {
 
         for (_, att_list) in manifest.note_attachments {
             for att in att_list {
+                tx.execute(
+                    "DELETE FROM deleted_attachments WHERE id = ?",
+                    params![att.id],
+                )
+                .map_err(|e| e.to_string())?;
                 insert_att
                     .execute(params![
                         att.id,
@@ -679,7 +794,14 @@ impl Database {
         if remote_manifest.version != 1 {
             return Err("This cloud data version is not supported".to_string());
         }
-        let local_manifest = self.export_backup()?;
+        // Hold the transaction through the read and merge so a concurrent delete cannot be overwritten.
+        let mut conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let tx = conn.transaction().map_err(|e| e.to_string())?;
+        let local_manifest = Self::export_from_conn(&tx)?;
+        let mut deleted_notes = local_manifest.deleted_note_ids;
+        deleted_notes.extend(remote_manifest.deleted_note_ids);
+        let mut deleted_attachments = local_manifest.deleted_attachment_ids;
+        deleted_attachments.extend(remote_manifest.deleted_attachment_ids);
         let local_notes_map: HashMap<String, Note> = local_manifest
             .notes
             .into_iter()
@@ -718,9 +840,19 @@ impl Database {
             }
         }
 
+        let before = merged_notes.len();
+        let (merged_notes, deleted_notes) =
+            Self::filter_deleted_notes(merged_notes, &deleted_notes);
+        changed |= merged_notes.len() != before;
+        Self::store_deleted_ids(&tx, "deleted_notes", &deleted_notes)?;
+        Self::store_deleted_ids(&tx, "deleted_attachments", &deleted_attachments)?;
+        for id in &deleted_attachments {
+            changed |= tx
+                .execute("DELETE FROM note_attachments WHERE id = ?", params![id])
+                .map_err(|e| e.to_string())?
+                > 0;
+        }
         let total_count = merged_notes.len();
-        let mut conn = self.conn.lock().map_err(|e| e.to_string())?;
-        let tx = conn.transaction().map_err(|e| e.to_string())?;
         if changed {
             Self::write_notes(&tx, &merged_notes)?;
         }
@@ -737,6 +869,14 @@ impl Database {
 
         for (_, att_list) in remote_manifest.note_attachments {
             for att in att_list {
+                if deleted_attachments.contains(&att.id)
+                    || att
+                        .note_id
+                        .as_ref()
+                        .is_some_and(|id| deleted_notes.contains(id))
+                {
+                    continue;
+                }
                 if !existing_ids.contains(&att.id) {
                     tx.execute(
                         "INSERT INTO note_attachments (id, noteId, name, kind, ext, mime, size, data, createdAt) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
@@ -848,6 +988,80 @@ mod tests {
             assert!(db.save_notes(invalid).is_err());
             assert_eq!(db.load_notes().unwrap()[0].id, "original");
         }
+    }
+
+    #[test]
+    fn deleted_notebook_and_attachments_stay_deleted_after_repeated_sync() {
+        let db = database();
+        db.save_notes(vec![
+            note("book", None),
+            note("page", Some("book")),
+            note("keep", None),
+        ])
+        .unwrap();
+        let attachment =
+            serde_json::from_value(serde_json::json!({"id": "file", "noteId": "page"})).unwrap();
+        db.save_note_attachment(&attachment).unwrap();
+        let mut stale = db.export_backup().unwrap();
+        // A second device adds a nested page while offline.
+        stale.notes.push(note("offline-child", Some("page")));
+        db.save_notes(vec![note("keep", None)]).unwrap();
+        for _ in 0..2 {
+            db.merge_vault_from_cloud(stale.clone()).unwrap();
+            assert_eq!(db.load_notes().unwrap().len(), 1);
+            assert!(db.get_note_attachment("file").unwrap().is_none());
+        }
+        let exported = db.export_backup().unwrap();
+        assert!(exported.deleted_note_ids.contains("offline-child"));
+        let other_device = database();
+        other_device.import_backup(stale).unwrap();
+        assert!(other_device.merge_vault_from_cloud(exported).unwrap().1);
+        assert_eq!(other_device.load_notes().unwrap()[0].id, "keep");
+    }
+
+    #[test]
+    fn deleting_last_note_survives_restart_and_legacy_cloud_vault() {
+        let path = std::env::temp_dir().join(format!("mynotes-delete-{}", rand::random::<u64>()));
+        let stale = {
+            let db = Database::new(path.clone()).unwrap();
+            db.save_notes(vec![note("last", None)]).unwrap();
+            let stale = db.export_backup().unwrap();
+            db.save_notes(vec![]).unwrap();
+            stale
+        };
+        let mut json = serde_json::to_value(stale).unwrap();
+        json.as_object_mut().unwrap().remove("deletedNoteIds");
+        json.as_object_mut().unwrap().remove("deletedAttachmentIds");
+        {
+            let db = Database::new(path.clone()).unwrap();
+            db.merge_vault_from_cloud(serde_json::from_value(json).unwrap())
+                .unwrap();
+            assert!(db.load_notes().unwrap().is_empty());
+            // An old editor save cannot resurrect the page either.
+            db.save_notes(vec![note("last", None)]).unwrap();
+            assert!(db.load_notes().unwrap().is_empty());
+        }
+        std::fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn deleted_attachment_propagates_without_deleting_its_note() {
+        let db = database();
+        db.save_notes(vec![note("page", None)]).unwrap();
+        let attachment =
+            serde_json::from_value(serde_json::json!({"id": "file", "noteId": "page"})).unwrap();
+        db.save_note_attachment(&attachment).unwrap();
+        let stale = db.export_backup().unwrap();
+        db.delete_note_attachment("file").unwrap();
+        db.merge_vault_from_cloud(stale.clone()).unwrap();
+        assert!(db.get_note_attachment("file").unwrap().is_none());
+        let other = database();
+        other.import_backup(stale).unwrap();
+        other
+            .merge_vault_from_cloud(db.export_backup().unwrap())
+            .unwrap();
+        assert!(other.get_note_attachment("file").unwrap().is_none());
+        assert_eq!(other.load_notes().unwrap().len(), 1);
     }
 
     #[test]

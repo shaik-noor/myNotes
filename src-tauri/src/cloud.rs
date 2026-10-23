@@ -7,7 +7,7 @@ use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_opener::OpenerExt;
 
@@ -19,6 +19,7 @@ const GOOGLE_REVOKE_URL: &str = "https://oauth2.googleapis.com/revoke";
 pub struct CloudSyncManager {
     db: Arc<Database>,
     is_syncing: AtomicBool,
+    pending_sync: Mutex<bool>,
 }
 
 #[derive(Deserialize)]
@@ -181,6 +182,7 @@ impl CloudSyncManager {
         Self {
             db,
             is_syncing: AtomicBool::new(false),
+            pending_sync: Mutex::new(false),
         }
     }
 
@@ -542,15 +544,28 @@ impl CloudSyncManager {
     }
 
     pub async fn sync_now(&self, app_handle: &AppHandle) -> Result<CloudSyncResult, String> {
-        if self.is_syncing.swap(true, Ordering::SeqCst) {
-            return Err("Sync already in progress".to_string());
+        {
+            let mut pending = self.pending_sync.lock().map_err(|e| e.to_string())?;
+            if self.is_syncing.swap(true, Ordering::SeqCst) {
+                *pending = true;
+                return Err("Sync already in progress; another sync has been queued".to_string());
+            }
         }
 
         let _ = app_handle.emit("cloud:sync-started", ());
 
-        let result = self.execute_sync(app_handle).await;
-
-        self.is_syncing.store(false, Ordering::SeqCst);
+        let result = loop {
+            let result = self.execute_sync(app_handle).await;
+            let mut pending = self.pending_sync.lock().map_err(|e| e.to_string())?;
+            // A delete during upload needs a second pass to reach Drive.
+            if result.is_ok() && *pending {
+                *pending = false;
+                continue;
+            }
+            *pending = false;
+            self.is_syncing.store(false, Ordering::SeqCst);
+            break result;
+        };
 
         match result {
             Ok(res) => {

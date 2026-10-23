@@ -58,21 +58,36 @@ class SyncService {
       var localNotes = currentLocalNotes ?? _storage.loadNotes();
       var localAttachments = _storage.loadAttachments();
       final localSettings = _storage.loadSettings();
+      var deletedNoteIds = _storage.loadDeletedNoteIds();
+      var deletedAttachmentIds = _storage.loadDeletedAttachmentIds();
 
       // 3. Download and merge remote vault if exists
       if (existingFileId != null && existingFileId.isNotEmpty) {
         final remoteManifest = await _drive.downloadVault(existingFileId);
         if (remoteManifest != null) {
+          // Re-read after the network request to include deletes made during download.
+          localNotes = _storage.loadNotes();
+          localAttachments = _storage.loadAttachments();
+          deletedNoteIds = _storage.loadDeletedNoteIds();
+          deletedAttachmentIds = _storage.loadDeletedAttachmentIds();
           final mergeResult = mergeVaultFromCloud(
             localNotes: localNotes,
             remoteNotes: remoteManifest.notes,
+            localDeletedNoteIds: deletedNoteIds,
+            remoteDeletedNoteIds: remoteManifest.deletedNoteIds,
+            localDeletedAttachmentIds: deletedAttachmentIds,
+            remoteDeletedAttachmentIds: remoteManifest.deletedAttachmentIds,
             localAttachments: localAttachments,
             remoteAttachments: remoteManifest.noteAttachments,
           );
 
           localNotes = mergeResult.mergedNotes;
           localAttachments = mergeResult.mergedAttachments;
+          deletedNoteIds = mergeResult.deletedNoteIds;
+          deletedAttachmentIds = mergeResult.deletedAttachmentIds;
           downloaded = true;
+          await _storage.saveDeletedNoteIds(deletedNoteIds);
+          await _storage.saveDeletedAttachmentIds(deletedAttachmentIds);
 
           // Save merged data to local storage
           await _storage.saveNotes(localNotes);
@@ -85,6 +100,8 @@ class SyncService {
         version: 1,
         timestamp: DateTime.now().toUtc().toIso8601String(),
         notes: localNotes,
+        deletedNoteIds: deletedNoteIds,
+        deletedAttachmentIds: deletedAttachmentIds,
         noteAttachments: localAttachments,
         settings: localSettings,
       );
@@ -123,12 +140,17 @@ class SyncService {
     }
   }
 
-  /// Exact 3-way merge algorithm matching desktop Tauri Rust `merge_vault_from_cloud`:
+  /// Merge matching desktop Tauri Rust `merge_vault_from_cloud`:
+  /// - Permanent deletion records win over edits on offline devices.
   /// - Compares `updatedAt` timestamps. Later timestamp wins.
   /// - Preserves local-only notes.
   /// - Adds remote-only notes.
   /// - Unites attachments.
   static MergeResult mergeVaultFromCloud({
+    Set<String> localDeletedNoteIds = const {},
+    Set<String> remoteDeletedNoteIds = const {},
+    Set<String> localDeletedAttachmentIds = const {},
+    Set<String> remoteDeletedAttachmentIds = const {},
     required List<Note> localNotes,
     required List<Note> remoteNotes,
     required Map<String, List<NoteAttachmentRow>> localAttachments,
@@ -165,8 +187,27 @@ class SyncService {
       }
     }
 
+    final deletedNoteIds = {...localDeletedNoteIds, ...remoteDeletedNoteIds};
+    final deletedAttachmentIds = {
+      ...localDeletedAttachmentIds,
+      ...remoteDeletedAttachmentIds
+    };
+    while (true) {
+      final before = deletedNoteIds.length;
+      for (final note in merged) {
+        if (deletedNoteIds.contains(note.parentId)) deletedNoteIds.add(note.id);
+      }
+      if (before == deletedNoteIds.length) break;
+    }
+    final before = merged.length;
+    merged.removeWhere((n) => deletedNoteIds.contains(n.id));
+    changed |= before != merged.length;
+
     // Merge attachments by attachment ID
-    final mergedAttachments = Map<String, List<NoteAttachmentRow>>.from(localAttachments);
+    final mergedAttachments = {
+      for (final entry in localAttachments.entries)
+        entry.key: List<NoteAttachmentRow>.from(entry.value),
+    };
     remoteAttachments.forEach((noteId, rList) {
       final currentList = mergedAttachments[noteId] ?? <NoteAttachmentRow>[];
       final currentIds = currentList.map((a) => a.id).toSet();
@@ -180,7 +221,18 @@ class SyncService {
       mergedAttachments[noteId] = currentList;
     });
 
+    mergedAttachments.removeWhere((id, _) => deletedNoteIds.contains(id));
+    for (final list in mergedAttachments.values) {
+      final before = list.length;
+      list.removeWhere((a) =>
+          deletedAttachmentIds.contains(a.id) ||
+          deletedNoteIds.contains(a.noteId));
+      changed |= before != list.length;
+    }
+
     return MergeResult(
+      deletedNoteIds: deletedNoteIds,
+      deletedAttachmentIds: deletedAttachmentIds,
       mergedNotes: merged,
       mergedAttachments: mergedAttachments,
       hasChanged: changed,
@@ -204,10 +256,14 @@ class MergeResult {
   final List<Note> mergedNotes;
   final Map<String, List<NoteAttachmentRow>> mergedAttachments;
   final bool hasChanged;
+  final Set<String> deletedNoteIds;
+  final Set<String> deletedAttachmentIds;
 
   const MergeResult({
     required this.mergedNotes,
     required this.mergedAttachments,
     required this.hasChanged,
+    this.deletedNoteIds = const {},
+    this.deletedAttachmentIds = const {},
   });
 }

@@ -5,8 +5,23 @@ import 'package:mynotes_mobile/models/backup_manifest.dart';
 import 'package:mynotes_mobile/models/app_settings.dart';
 
 void main() {
+  test('deletion records round-trip and old vaults remain readable', () {
+    final old = BackupManifest.fromJson({'version': 1, 'notes': []});
+    expect(old.deletedNoteIds, isEmpty);
+    final manifest = BackupManifest(
+        timestamp: '',
+        notes: [],
+        deletedNoteIds: {'page'},
+        deletedAttachmentIds: {'file'});
+    final restored = BackupManifest.fromJson(manifest.toJson());
+    expect(restored.deletedNoteIds, {'page'});
+    expect(restored.deletedAttachmentIds, {'file'});
+  });
+
   group('BackupManifest Tests', () {
-    test('Serializes and deserializes full manifest compatible with desktop vault', () {
+    test(
+        'Serializes and deserializes full manifest compatible with desktop vault',
+        () {
       final note = Note(
         id: 'note-1',
         title: 'Project Spec',

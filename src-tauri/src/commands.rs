@@ -85,7 +85,7 @@ pub async fn notes_save(
     match state.db.save_notes(notes_list) {
         Ok(_) => {
             // Trigger background cloud auto-sync if enabled
-            if state.cloud.is_connected() {
+            if state.cloud.is_connected() && state.cloud.get_config().auto_sync {
                 let cloud = state.cloud.clone();
                 let handle = app_handle.clone();
                 tokio::spawn(async move {
@@ -272,9 +272,18 @@ pub async fn attachment_reveal(
 pub async fn attachment_remove(
     state: State<'_, AppState>,
     id: String,
+    app_handle: AppHandle,
 ) -> Result<ResultResponse<()>, ()> {
     match attachments::remove_attachment(&state.data_dir, &state.db, &id) {
-        Ok(_) => Ok(ResultResponse::ok_void()),
+        Ok(_) => {
+            if state.cloud.is_connected() && state.cloud.get_config().auto_sync {
+                let cloud = state.cloud.clone();
+                tokio::spawn(async move {
+                    let _ = cloud.sync_now(&app_handle).await;
+                });
+            }
+            Ok(ResultResponse::ok_void())
+        }
         Err(e) => Ok(ResultResponse::err(e)),
     }
 }

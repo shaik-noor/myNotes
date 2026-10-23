@@ -713,16 +713,7 @@ export function NotesSidebarPanel({
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 variant="destructive"
-                                onClick={async () => {
-                                  const ok = await confirmDialog({
-                                    title: 'Delete page?',
-                                    description: `"${note.title || 'Untitled'}" will be deleted.`,
-                                    confirmText: 'Delete',
-                                    destructive: true
-                                  })
-                                  if (!ok) return
-                                  await deleteNote(note.id)
-                                }}
+                                onClick={() => void deleteNote(note.id)}
                                 className="cursor-pointer gap-2 text-xs"
                               >
                                 <Trash2 className="size-3.5" /> Delete

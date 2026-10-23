@@ -318,12 +318,16 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const updated = notes.filter((item) => !removeIds.has(item.id))
     const nextSelectedId =
       selectedNoteId && removeIds.has(selectedNoteId) ? (updated[0]?.id ?? null) : selectedNoteId
-    set({ notes: updated, selectedNoteId: nextSelectedId })
+    set({ notes: updated })
+    get().setSelectedNoteId(nextSelectedId)
     if (!(await persistNotes(updated))) {
-      if (get().notes === updated) set({ notes, selectedNoteId })
+      if (get().notes === updated) {
+        set({ notes })
+        get().setSelectedNoteId(selectedNoteId)
+      }
       return
     }
-    toast.success('Page deleted')
+    toast.success(count > 0 ? 'Notebook and child pages deleted' : 'Page deleted')
   },
 
   deleteNotes: async (ids, skipConfirm = false) => {
@@ -351,9 +355,13 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       nextSelectedId = updated.length > 0 ? updated[0].id : null
     }
 
-    set({ notes: updated, selectedNoteId: nextSelectedId })
+    set({ notes: updated })
+    get().setSelectedNoteId(nextSelectedId)
     if (!(await persistNotes(updated))) {
-      if (get().notes === updated) set({ notes, selectedNoteId })
+      if (get().notes === updated) {
+        set({ notes })
+        get().setSelectedNoteId(selectedNoteId)
+      }
       return
     }
 

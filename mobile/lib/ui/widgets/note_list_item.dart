@@ -66,12 +66,15 @@ class NoteListItem extends StatelessWidget {
         } else {
           // Delete
           HapticFeedback.heavyImpact();
+          final isNotebook = subpagesCount > 0;
           return await showCupertinoDialog<bool>(
             context: context,
             builder: (ctx) => CupertinoAlertDialog(
-              title: const Text('Delete Note?'),
+              title: Text(isNotebook ? 'Delete Notebook?' : 'Delete Note?'),
               content: Text(
-                'Are you sure you want to delete "${note.title.isNotEmpty ? note.title : 'Untitled'}"? This cannot be undone.',
+                isNotebook
+                    ? 'Are you sure you want to delete "${note.title.isNotEmpty ? note.title : 'Untitled'}" and its $subpagesCount subpage(s)? This cannot be undone.'
+                    : 'Are you sure you want to delete "${note.title.isNotEmpty ? note.title : 'Untitled'}"? This cannot be undone.',
               ),
               actions: [
                 CupertinoDialogAction(

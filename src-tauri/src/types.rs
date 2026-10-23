@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -124,6 +125,10 @@ pub struct BackupManifest {
     pub version: u32,
     pub timestamp: String,
     pub notes: Vec<Note>,
+    #[serde(default)]
+    pub deleted_note_ids: HashSet<String>,
+    #[serde(default)]
+    pub deleted_attachment_ids: HashSet<String>,
     #[serde(default)]
     pub note_attachments: std::collections::HashMap<String, Vec<NoteAttachmentRow>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

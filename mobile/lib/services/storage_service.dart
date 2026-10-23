@@ -37,6 +37,7 @@ class StorageService {
       return list
           .whereType<Map<String, dynamic>>()
           .map((item) => Note.fromJson(item))
+          .where((note) => !loadDeletedNoteIds().contains(note.id))
           .toList();
     } catch (e) {
       print('Error reading local notes: $e');
@@ -48,6 +49,18 @@ class StorageService {
     final raw = jsonEncode(notes.map((n) => n.toJson()).toList());
     return _prefs.setString(_keyNotes, raw);
   }
+
+  Set<String> loadDeletedNoteIds() =>
+      (_prefs.getStringList('mynotes_deleted_note_ids') ?? []).toSet();
+
+  Future<bool> saveDeletedNoteIds(Set<String> ids) =>
+      _prefs.setStringList('mynotes_deleted_note_ids', ids.toList());
+
+  Set<String> loadDeletedAttachmentIds() =>
+      (_prefs.getStringList('mynotes_deleted_attachment_ids') ?? []).toSet();
+
+  Future<bool> saveDeletedAttachmentIds(Set<String> ids) =>
+      _prefs.setStringList('mynotes_deleted_attachment_ids', ids.toList());
 
   // --- Attachments ---
   Map<String, List<NoteAttachmentRow>> loadAttachments() {

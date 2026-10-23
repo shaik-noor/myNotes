@@ -4,6 +4,41 @@ import 'package:mynotes_mobile/models/attachment.dart';
 import 'package:mynotes_mobile/services/sync_service.dart';
 
 void main() {
+  test('deletions beat stale devices and include offline descendants', () {
+    final notes = [
+      Note(
+          id: 'book', title: 'Book', content: '', createdAt: '', updatedAt: ''),
+      Note(
+          id: 'page',
+          parentId: 'book',
+          title: 'Page',
+          content: '',
+          createdAt: '',
+          updatedAt: ''),
+      Note(
+          id: 'keep', title: 'Keep', content: '', createdAt: '', updatedAt: ''),
+    ];
+    for (final localDelete in [true, false]) {
+      final result = SyncService.mergeVaultFromCloud(
+        localNotes: notes,
+        remoteNotes: notes,
+        localDeletedNoteIds: localDelete ? {'book'} : {},
+        remoteDeletedNoteIds: localDelete ? {} : {'book'},
+        remoteDeletedAttachmentIds: {'removed-file'},
+        localAttachments: {
+          'keep': [NoteAttachmentRow(id: 'removed-file', noteId: 'keep')]
+        },
+        remoteAttachments: {
+          'page': [NoteAttachmentRow(id: 'child-file', noteId: 'page')]
+        },
+      );
+      expect(result.mergedNotes.map((n) => n.id), ['keep']);
+      expect(result.deletedNoteIds, {'book', 'page'});
+      expect(result.mergedAttachments['keep'], isEmpty);
+      expect(result.mergedAttachments.containsKey('page'), false);
+    }
+  });
+
   group('Conflict Resolution & Cloud Merge Tests', () {
     test('Newer remote note wins over older local note', () {
       const local = Note(
@@ -32,7 +67,8 @@ void main() {
       expect(result.hasChanged, true);
       expect(result.mergedNotes.length, 1);
       expect(result.mergedNotes.first.title, 'Remote Newer Title');
-      expect(result.mergedNotes.first.content, 'Remote updated text from Desktop');
+      expect(
+          result.mergedNotes.first.content, 'Remote updated text from Desktop');
     });
 
     test('Newer local note wins over older remote note', () {

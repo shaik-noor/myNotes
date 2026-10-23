@@ -29,7 +29,8 @@ class NotesProvider extends ChangeNotifier {
   }
 
   void replaceNotesFromSync(List<Note> newNotes) {
-    _notes = List.from(newNotes);
+    final deleted = _storage.loadDeletedNoteIds();
+    _notes = newNotes.where((n) => !deleted.contains(n.id)).toList();
     _storage.saveNotes(_notes);
     notifyListeners();
   }
@@ -64,7 +65,9 @@ class NotesProvider extends ChangeNotifier {
       result = result.where((n) => n.isPinned).toList();
     } else if (_activeSegmentIndex == 2) {
       // Root level Notebooks/Folders
-      result = result.where((n) => n.parentId == null || n.parentId!.isEmpty).toList();
+      result = result
+          .where((n) => n.parentId == null || n.parentId!.isEmpty)
+          .toList();
     }
 
     // Tag filter
@@ -94,8 +97,8 @@ class NotesProvider extends ChangeNotifier {
     return result;
   }
 
-  List<Note> get pinnedNotes =>
-      _notes.where((n) => n.isPinned).toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  List<Note> get pinnedNotes => _notes.where((n) => n.isPinned).toList()
+    ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
   List<Note> get recentNotes {
     final list = List<Note>.from(_notes);
@@ -129,13 +132,16 @@ class NotesProvider extends ChangeNotifier {
 
   List<Note> getAncestors(String noteId) {
     final note = getNoteById(noteId);
-    if (note == null || note.parentId == null || note.parentId!.isEmpty) return [];
+    if (note == null || note.parentId == null || note.parentId!.isEmpty) {
+      return [];
+    }
 
     final chain = <Note>[];
     final visited = <String>{};
     String? current = note.parentId;
 
-    while (current != null && current.isNotEmpty && !visited.contains(current)) {
+    while (
+        current != null && current.isNotEmpty && !visited.contains(current)) {
       visited.add(current);
       final parent = getNoteById(current);
       if (parent == null) break;
@@ -175,7 +181,8 @@ class NotesProvider extends ChangeNotifier {
     final now = DateTime.now().toUtc().toIso8601String();
     final newNote = Note(
       id: const Uuid().v4(),
-      title: (title == null || title.trim().isEmpty) ? 'Untitled' : title.trim(),
+      title:
+          (title == null || title.trim().isEmpty) ? 'Untitled' : title.trim(),
       content: content ?? '',
       createdAt: now,
       updatedAt: now,
@@ -231,6 +238,28 @@ class NotesProvider extends ChangeNotifier {
       }
     }
 
+    final deleted = _storage.loadDeletedNoteIds()..addAll(idsToDelete);
+    if (!await _storage.saveDeletedNoteIds(deleted)) {
+      throw Exception('Could not save deletion');
+    }
+
+    final attachments = _storage.loadAttachments();
+    final deletedAttachmentIds = _storage.loadDeletedAttachmentIds();
+    var attsModified = false;
+    for (final did in idsToDelete) {
+      if (attachments.containsKey(did)) {
+        for (final att in attachments[did]!) {
+          deletedAttachmentIds.add(att.id);
+        }
+        attachments.remove(did);
+        attsModified = true;
+      }
+    }
+    if (attsModified) {
+      await _storage.saveDeletedAttachmentIds(deletedAttachmentIds);
+      await _storage.saveAttachments(attachments);
+    }
+
     _notes.removeWhere((n) => idsToDelete.contains(n.id));
     await _storage.saveNotes(_notes);
     notifyListeners();
@@ -244,7 +273,9 @@ class NotesProvider extends ChangeNotifier {
   }
 
   void _triggerAutoSync() {
-    if (_syncProvider == null || !_syncProvider!.isConnected || !_syncProvider!.autoSync) {
+    if (_syncProvider == null ||
+        !_syncProvider!.isConnected ||
+        !_syncProvider!.autoSync) {
       return;
     }
 

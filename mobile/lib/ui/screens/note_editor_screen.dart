@@ -159,6 +159,54 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               );
             },
           ),
+
+          // Delete Note / Notebook
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(CupertinoIcons.delete, size: 20, color: CupertinoColors.destructiveRed),
+                const SizedBox(width: 8),
+                Text(notesProvider.getSubpages(note.id).isNotEmpty ? 'Delete Notebook' : 'Delete Note'),
+              ],
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final subpages = notesProvider.getSubpages(note.id);
+              final isNotebook = subpages.isNotEmpty;
+              final ok = await showCupertinoDialog<bool>(
+                context: context,
+                builder: (dialogCtx) => CupertinoAlertDialog(
+                  title: Text(isNotebook ? 'Delete Notebook?' : 'Delete Note?'),
+                  content: Text(
+                    isNotebook
+                        ? 'Are you sure you want to delete "${note.title.isNotEmpty ? note.title : 'Untitled'}" and its ${subpages.length} subpage(s)? This cannot be undone.'
+                        : 'Are you sure you want to delete "${note.title.isNotEmpty ? note.title : 'Untitled'}"? This cannot be undone.',
+                  ),
+                  actions: [
+                    CupertinoDialogAction(
+                      isDefaultAction: true,
+                      child: const Text('Cancel'),
+                      onPressed: () => Navigator.of(dialogCtx).pop(false),
+                    ),
+                    CupertinoDialogAction(
+                      isDestructiveAction: true,
+                      child: const Text('Delete'),
+                      onPressed: () => Navigator.of(dialogCtx).pop(true),
+                    ),
+                  ],
+                ),
+              ) ?? false;
+
+              if (ok && mounted) {
+                await notesProvider.deleteNote(note.id);
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
+              }
+            },
+          ),
         ],
         cancelButton: CupertinoActionSheetAction(
           isDefaultAction: true,

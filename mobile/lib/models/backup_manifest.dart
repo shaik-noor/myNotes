@@ -8,6 +8,8 @@ class BackupManifest {
   final int version;
   final String timestamp;
   final List<Note> notes;
+  final Set<String> deletedNoteIds;
+  final Set<String> deletedAttachmentIds;
   final Map<String, List<NoteAttachmentRow>> noteAttachments;
   final AppSettings? settings;
 
@@ -15,6 +17,8 @@ class BackupManifest {
     this.version = 1,
     required this.timestamp,
     required this.notes,
+    this.deletedNoteIds = const {},
+    this.deletedAttachmentIds = const {},
     this.noteAttachments = const {},
     this.settings,
   });
@@ -26,6 +30,8 @@ class BackupManifest {
     });
 
     return {
+      'deletedNoteIds': deletedNoteIds.toList(),
+      'deletedAttachmentIds': deletedAttachmentIds.toList(),
       'version': version,
       'timestamp': timestamp,
       'notes': notes.map((n) => n.toJson()).toList(),
@@ -36,7 +42,8 @@ class BackupManifest {
 
   factory BackupManifest.fromJson(Map<String, dynamic> json) {
     final version = json['version'] as int? ?? 1;
-    final timestamp = json['timestamp'] as String? ?? DateTime.now().toUtc().toIso8601String();
+    final timestamp = json['timestamp'] as String? ??
+        DateTime.now().toUtc().toIso8601String();
 
     final notesRaw = json['notes'] as List? ?? [];
     final notes = notesRaw
@@ -45,7 +52,8 @@ class BackupManifest {
         .toList();
 
     final attachmentsMap = <String, List<NoteAttachmentRow>>{};
-    final attachmentsRaw = json['noteAttachments'] as Map<String, dynamic>? ?? {};
+    final attachmentsRaw =
+        json['noteAttachments'] as Map<String, dynamic>? ?? {};
     attachmentsRaw.forEach((noteId, list) {
       if (list is List) {
         attachmentsMap[noteId] = list
@@ -64,6 +72,10 @@ class BackupManifest {
       version: version,
       timestamp: timestamp,
       notes: notes,
+      deletedNoteIds:
+          (json['deletedNoteIds'] as List? ?? []).cast<String>().toSet(),
+      deletedAttachmentIds:
+          (json['deletedAttachmentIds'] as List? ?? []).cast<String>().toSet(),
       noteAttachments: attachmentsMap,
       settings: settings,
     );
